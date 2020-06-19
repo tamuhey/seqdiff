@@ -3,6 +3,13 @@ name = "seqdiff"
 version = "0.1.0"
 authors = ["Yohei Tamura <tamuhey@gmail.com>"]
 edition = "2018"
+license = "MIT"
+description = "Diff between two sequences"
+homepage = "https://github.com/tamuhey/seqdiff"
+repository = "https://github.com/tamuhey/seqdiff"
+keywords = ["algorithm", "diff", "Vec"]
+readme = "README.md"
+documentation = "https://docs.rs/seqdiff"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
