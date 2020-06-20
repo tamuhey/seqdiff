@@ -1,6 +1,7 @@
+#![deny(warnings)]
 use pyo3::{ffi, prelude::*, types::PySequence, AsPyPointer};
 use seqdiff::{diff_by, Diff};
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[pymodule]
 fn seqdiff(_py: Python, m: &PyModule) -> PyResult<()> {

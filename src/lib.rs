@@ -1,3 +1,4 @@
+#![deny(warnings)]
 //! Diff between two sequences
 #[cfg(test)]
 mod tests;
@@ -36,7 +37,7 @@ impl<'a> Iterator for EditPath {
 ///
 /// See [An O(ND) Difference Algorithm and Its Variations](http://www.xmailserver.org/diff2.pdf)
 #[allow(clippy::many_single_char_names)]
-fn get_shortest_edit_path_myers<A, B, F>(a: &Vec<A>, b: &Vec<B>, cmp: F) -> EditPath
+fn get_shortest_edit_path_myers<A, B, F>(a: &[A], b: &[B], cmp: F) -> EditPath
 where
     F: Fn(&A, &B) -> bool,
 {
@@ -94,13 +95,13 @@ fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) 
     (a2b, b2a)
 }
 
-pub fn diff_by<A, B, F>(a: &Vec<A>, b: &Vec<B>, cmp: F) -> (Diff, Diff)
+pub fn diff_by<A, B, F>(a: &[A], b: &[B], cmp: F) -> (Diff, Diff)
 where
     F: Fn(&A, &B) -> bool,
 {
     path_to_diff(get_shortest_edit_path_myers(a, b, cmp))
 }
 
-pub fn diff<A: PartialEq<B>, B>(a: &Vec<A>, b: &Vec<B>) -> (Diff, Diff) {
+pub fn diff<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> (Diff, Diff) {
     diff_by(a, b, <A as PartialEq<B>>::eq)
 }

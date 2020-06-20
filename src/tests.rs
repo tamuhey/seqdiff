@@ -43,7 +43,7 @@ impl Iterator for EditPathFromGrid {
 
 #[allow(clippy::many_single_char_names)]
 #[cfg(test)]
-fn get_shortest_edit_path_grid<A: PartialEq<B>, B>(a: &Vec<A>, b: &Vec<B>) -> EditPathFromGrid {
+fn get_shortest_edit_path_grid<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> EditPathFromGrid {
     let n = a.len();
     let m = b.len();
     let mut d = vec![vec![std::usize::MAX; m + 1]; n + 1];
