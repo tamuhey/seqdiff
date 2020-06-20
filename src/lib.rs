@@ -1,5 +1,6 @@
+//! Functions to get correspondence between two sequences like diff,
+//! based on Myers' algorithm.
 #![deny(warnings)]
-//! Diff between two sequences
 #[cfg(test)]
 mod tests;
 use std::collections::HashMap;
@@ -78,8 +79,6 @@ where
     }
 }
 
-pub type Diff = Vec<Option<usize>>;
-
 fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) {
     let (mut i, mut j) = path.next().unwrap();
     let mut a2b = vec![None; i];
@@ -95,13 +94,37 @@ fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) 
     (a2b, b2a)
 }
 
+/// An alias for the result of diff type
+pub type Diff = Vec<Option<usize>>;
+
+/// Returns the correspondence between two sequences.
+///
+/// # Examples
+///
+/// ```
+/// use seqdiff;
+/// let (a2b, b2a) = seqdiff::diff(&[1, 2, 3], &[1, 3]);
+/// assert_eq!(a2b, vec![Some(0), None, Some(1)]);
+/// assert_eq!(b2a, vec![Some(0), Some(2)]);
+/// ```
+pub fn diff<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> (Diff, Diff) {
+    diff_by(a, b, <A as PartialEq<B>>::eq)
+}
+
+/// Returns the correspondence between two sequences with a comparison function.
+///
+/// # Examples
+///
+/// ```
+/// use seqdiff;
+/// let nan_eq = |a: &f64, b: &f64| if a.is_nan() && b.is_nan() { true } else { a == b };
+/// let (a2b, b2a) = seqdiff::diff_by(&[1., 2., f64::NAN], &[1., f64::NAN], nan_eq);
+/// assert_eq!(a2b, vec![Some(0), None, Some(1)]);
+/// assert_eq!(b2a, vec![Some(0), Some(2)]);
+/// ```
 pub fn diff_by<A, B, F>(a: &[A], b: &[B], cmp: F) -> (Diff, Diff)
 where
     F: Fn(&A, &B) -> bool,
 {
     path_to_diff(get_shortest_edit_path_myers(a, b, cmp))
-}
-
-pub fn diff<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> (Diff, Diff) {
-    diff_by(a, b, <A as PartialEq<B>>::eq)
 }
