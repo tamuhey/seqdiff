@@ -5,7 +5,7 @@ build-backend = "poetry.masonry.api"
 [tool.versionup]
 tag = true
 commit = true
-files = [ "src/lib.rs", "Cargo.toml",]
+files = [ "Cargo.toml",]
 tag_prefix = "python/"
 
 [tool.poetry]

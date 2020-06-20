@@ -1,6 +1,10 @@
 import pytest
-from seqdiff import diff
+from seqdiff import diff, __version__
 from hypothesis import strategies as st, given, example
+
+
+def test_version():
+    assert isinstance(__version__, str)
 
 
 nan = float("nan")

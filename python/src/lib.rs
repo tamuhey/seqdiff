@@ -1,9 +1,10 @@
 use pyo3::{ffi, prelude::*, types::PySequence, AsPyPointer};
 use seqdiff::{diff_by, Diff};
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 #[pymodule]
 fn seqdiff(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add("__version__", "0.1.0")?;
+    m.add("__version__", VERSION)?;
 
     #[pyfn(m, "diff")]
     pub fn diff_py(_py: Python, a: &PySequence, b: &PySequence) -> PyResult<(Diff, Diff)> {
