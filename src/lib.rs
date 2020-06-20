@@ -1,4 +1,4 @@
-//! Diff between two Eq sequences
+//! Diff between two sequences
 #[cfg(test)]
 mod tests;
 use std::collections::HashMap;
@@ -36,7 +36,10 @@ impl<'a> Iterator for EditPath {
 ///
 /// See [An O(ND) Difference Algorithm and Its Variations](http://www.xmailserver.org/diff2.pdf)
 #[allow(clippy::many_single_char_names)]
-fn get_shortest_edit_path_myers<A: PartialEq<B>, B>(a: &Vec<A>, b: &Vec<B>) -> EditPath {
+fn get_shortest_edit_path_myers<A, B, F>(a: &Vec<A>, b: &Vec<B>, cmp: F) -> EditPath
+where
+    F: Fn(&A, &B) -> bool,
+{
     let n = a.len();
     let m = b.len();
     let bound = n + m;
@@ -56,7 +59,7 @@ fn get_shortest_edit_path_myers<A: PartialEq<B>, B>(a: &Vec<A>, b: &Vec<B>) -> E
             };
             let mut y = get_y(x, k);
             nodes_map.insert(Node::P((x, y)), parent);
-            while x < n && y < m && a[x] == b[y] {
+            while x < n && y < m && cmp(&a[x], &b[y]) {
                 nodes_map.insert(Node::P((x + 1, y + 1)), Node::P((x, y)));
                 x += 1;
                 y += 1;
@@ -91,6 +94,13 @@ fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) 
     (a2b, b2a)
 }
 
+pub fn diff_by<A, B, F>(a: &Vec<A>, b: &Vec<B>, cmp: F) -> (Diff, Diff)
+where
+    F: Fn(&A, &B) -> bool,
+{
+    path_to_diff(get_shortest_edit_path_myers(a, b, cmp))
+}
+
 pub fn diff<A: PartialEq<B>, B>(a: &Vec<A>, b: &Vec<B>) -> (Diff, Diff) {
-    path_to_diff(get_shortest_edit_path_myers(a, b))
+    diff_by(a, b, <A as PartialEq<B>>::eq)
 }

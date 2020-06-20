@@ -1,0 +1,24 @@
+[package]
+name = "pyseqdiff"
+version = "0.1.0"
+authors = ["Yohei Tamura <tamuhey@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+seqdiff = { path = "..", version = "*" }
+
+
+[lib]
+name = "seqdiff"
+crate-type = ["cdylib"]
+
+[dependencies.pyo3]
+# version = "0.10"
+git = "https://github.com/PyO3/pyo3"
+# features = ["extension-module"]
+# features = []
+[features]
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]

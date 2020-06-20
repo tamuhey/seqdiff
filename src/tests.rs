@@ -76,6 +76,25 @@ fn get_shortest_edit_path_grid<A: PartialEq<B>, B>(a: &Vec<A>, b: &Vec<B>) -> Ed
 #[quickcheck]
 fn randomcheck_myers_with_dp(a: Vec<char>, b: Vec<char>) {
     let v = path_to_diff(get_shortest_edit_path_grid(&a, &b));
-    let w = path_to_diff(get_shortest_edit_path_myers(&a, &b));
+    let w = diff(&a, &b);
     assert_eq!(v, w)
+}
+
+#[test]
+fn test_diff() {
+    let cases = [(
+        (vec![std::f64::NAN], vec![std::f64::NAN]),
+        (vec![None], vec![None]),
+    )];
+    for ((a, b), expected) in cases.iter() {
+        let ret = diff(a, b);
+        assert_eq!(ret.0.len(), expected.0.len());
+        assert_eq!(ret.1.len(), expected.0.len());
+        for (x, y) in ret.0.iter().zip(expected.0.iter()) {
+            assert_eq!(x, y);
+        }
+        for (x, y) in ret.1.iter().zip(expected.1.iter()) {
+            assert_eq!(x, y);
+        }
+    }
 }
