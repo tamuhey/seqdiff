@@ -10,7 +10,7 @@ tag_prefix = "python/"
 
 [tool.poetry]
 name = "pyseqdiff"
-version = "0.1.1"
+version = "0.1.2"
 description = ""
 authors = [ "Yohei Tamura <tamuhey@gmail.com>",]
 [[tool.poetry.packages]]
