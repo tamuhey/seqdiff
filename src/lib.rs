@@ -38,7 +38,7 @@ impl<'a> Iterator for EditPath {
 ///
 /// See [An O(ND) Difference Algorithm and Its Variations](http://www.xmailserver.org/diff2.pdf)
 #[allow(clippy::many_single_char_names)]
-fn get_shortest_edit_path_myers<A, B, F>(a: &[A], b: &[B], cmp: F) -> EditPath
+fn get_shortest_edit_path_myers<A, B, F>(a: &[A], b: &[B], is_eq: F) -> EditPath
 where
     F: Fn(&A, &B) -> bool,
 {
@@ -61,7 +61,7 @@ where
             };
             let mut y = get_y(x, k);
             nodes_map.insert(Node::P((x, y)), parent);
-            while x < n && y < m && cmp(&a[x], &b[y]) {
+            while x < n && y < m && is_eq(&a[x], &b[y]) {
                 nodes_map.insert(Node::P((x + 1, y + 1)), Node::P((x, y)));
                 x += 1;
                 y += 1;
@@ -122,9 +122,9 @@ pub fn diff<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> (Diff, Diff) {
 /// assert_eq!(a2b, vec![Some(0), None, Some(1)]);
 /// assert_eq!(b2a, vec![Some(0), Some(2)]);
 /// ```
-pub fn diff_by<A, B, F>(a: &[A], b: &[B], cmp: F) -> (Diff, Diff)
+pub fn diff_by<A, B, F>(a: &[A], b: &[B], is_eq: F) -> (Diff, Diff)
 where
     F: Fn(&A, &B) -> bool,
 {
-    path_to_diff(get_shortest_edit_path_myers(a, b, cmp))
+    path_to_diff(get_shortest_edit_path_myers(a, b, is_eq))
 }
