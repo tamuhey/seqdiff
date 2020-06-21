@@ -1,4 +1,5 @@
 import pytest
+import math
 from seqdiff import diff, __version__
 from hypothesis import strategies as st, given, example
 
@@ -10,15 +11,22 @@ def test_version():
 nan = float("nan")
 
 
+def cmp_nan_eq(x, y) -> bool:
+    if math.isnan(x) and math.isnan(y):
+        return True
+    return x == y
+
+
 @pytest.mark.parametrize(
-    "a,b,expected",
+    "a,b,key,expected",
     [
-        ([float("nan")], [float("nan")], ([None], [None])),
-        ([nan], [nan], ([None], [None])),
+        ([float("nan")], [float("nan")], None, ([None], [None])),
+        ([nan], [nan], None, ([None], [None])),
+        ([nan], [nan], cmp_nan_eq, ([0], [0])),
     ],
 )
-def test_diff(a, b, expected):
-    assert diff(a, b) == expected
+def test_diff(a, b, key, expected):
+    assert diff(a, b, key=key) == expected
 
 
 @given(
