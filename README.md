@@ -71,3 +71,8 @@ assert_eq!(b2a, vec![Some(0), Some(2)]);
 ```
 
 See the [doc](https://docs.rs/seqdiff) for more info.
+
+# Related
+
+- [tokenizations - Robust and Fast tokenizations alignment library for Rust and Python](https://github.com/tamuhey/tokenizations)
+    - This library depends on `seqdiff`
