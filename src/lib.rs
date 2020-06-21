@@ -16,29 +16,15 @@ enum Node {
     Root,
 }
 
-struct EditPath {
-    nodes_map: HashMap<Node, Node>,
-    cur: Node,
-}
-
-impl<'a> Iterator for EditPath {
-    type Item = (usize, usize);
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.cur {
-            Node::Root => None,
-            Node::P(cur) => {
-                self.cur = *self.nodes_map.get(&Node::P(cur)).unwrap();
-                Some(cur)
-            }
-        }
-    }
-}
-
 /// Returns an iterator over the shotest path of the edit graph based on Myers' diff algorithm.
 ///
 /// See [An O(ND) Difference Algorithm and Its Variations](http://www.xmailserver.org/diff2.pdf)
 #[allow(clippy::many_single_char_names)]
-fn get_shortest_edit_path_myers<A, B, F>(a: &[A], b: &[B], is_eq: F) -> EditPath
+fn get_shortest_edit_path_myers<A, B, F>(
+    a: &[A],
+    b: &[B],
+    is_eq: F,
+) -> impl Iterator<Item = (usize, usize)>
 where
     F: Fn(&A, &B) -> bool,
 {
@@ -73,10 +59,14 @@ where
         }
     }
 
-    EditPath {
-        nodes_map,
-        cur: Node::P((n, m)),
-    }
+    let mut cur = Node::P((n, m));
+    std::iter::from_fn(move || match cur {
+        Node::Root => None,
+        Node::P(ncur) => {
+            cur = *nodes_map.get(&Node::P(ncur)).unwrap();
+            Some(ncur)
+        }
+    })
 }
 
 fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) {
