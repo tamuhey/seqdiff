@@ -89,6 +89,8 @@ pub type Diff = Vec<Option<usize>>;
 
 /// Returns the correspondence between two sequences.
 ///
+/// The return value is a pair of tuples. The first tuple contains the index where the item from the first sequence appears in the 2nd sequence or `None` if the item doesn't appear in the 2nd sequence. The 2nd tuple is the same but listing the corresponding indexes for the 2nd sequence in the first sequence.
+///
 /// # Examples
 ///
 /// ```
@@ -102,6 +104,8 @@ pub fn diff<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> (Diff, Diff) {
 }
 
 /// Returns the correspondence between two sequences with a comparison function.
+///
+/// The return value is a pair of tuples. The first tuple contains the index where the item from the first sequence appears in the 2nd sequence or `None` if the item doesn't appear in the 2nd sequence. The 2nd tuple is the same but listing the corresponding indexes for the 2nd sequence in the first sequence.
 ///
 /// # Examples
 ///
