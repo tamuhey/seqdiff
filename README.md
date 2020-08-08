@@ -5,6 +5,8 @@
 
 Functions to get correspondence between two sequences like `diff`, based on Myers' algorithm.
 
+<img src="./img/py_printdiff.png" width=400>
+
 # Usage
 
 ## Python
