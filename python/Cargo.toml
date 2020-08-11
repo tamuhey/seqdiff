@@ -15,7 +15,7 @@ name = "seqdiff"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
-version = "0.10"
+version = "0.11"
 
 [features]
 extension-module = ["pyo3/extension-module"]
