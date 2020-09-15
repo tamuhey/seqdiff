@@ -159,7 +159,7 @@ pub fn ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
     if l == 0 {
         return 100.;
     }
-    let mut path = get_shortest_edit_path_myers(a, b, <A as PartialEq<B>>::eq);
+    let mut path = get_shortest_edit_path(a, b, <A as PartialEq<B>>::eq);
     let (mut i, mut j) = path.next().unwrap();
     let mut ret = 0;
     for (pi, pj) in path {
