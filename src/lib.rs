@@ -16,7 +16,8 @@ enum Node {
     Root,
 }
 
-/// Returns an iterator over the shotest path of the edit graph based on Myers' diff algorithm.
+/// Returns an iterator over the shotest path of the edit graph based on Myers'
+/// diff algorithm.
 ///
 /// See [An O(ND) Difference Algorithm and Its Variations](http://www.xmailserver.org/diff2.pdf)
 #[allow(clippy::many_single_char_names)]
@@ -89,7 +90,11 @@ pub type Diff = Vec<Option<usize>>;
 
 /// Returns the correspondence between two sequences.
 ///
-/// The return value is a pair of tuples. The first tuple contains the index where the item from the first sequence appears in the 2nd sequence or `None` if the item doesn't appear in the 2nd sequence. The 2nd tuple is the same but listing the corresponding indexes for the 2nd sequence in the first sequence.
+/// The return value is a pair of tuples. The first tuple contains the index
+/// where the item from the first sequence appears in the 2nd sequence or `None`
+/// if the item doesn't appear in the 2nd sequence. The 2nd tuple is the same
+/// but listing the corresponding indexes for the 2nd sequence in the first
+/// sequence.
 ///
 /// # Examples
 ///
@@ -105,13 +110,23 @@ pub fn diff<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> (Diff, Diff) {
 
 /// Returns the correspondence between two sequences with a comparison function.
 ///
-/// The return value is a pair of tuples. The first tuple contains the index where the item from the first sequence appears in the 2nd sequence or `None` if the item doesn't appear in the 2nd sequence. The 2nd tuple is the same but listing the corresponding indexes for the 2nd sequence in the first sequence.
+/// The return value is a pair of tuples. The first tuple contains the index
+/// where the item from the first sequence appears in the 2nd sequence or `None`
+/// if the item doesn't appear in the 2nd sequence. The 2nd tuple is the same
+/// but listing the corresponding indexes for the 2nd sequence in the first
+/// sequence.
 ///
 /// # Examples
 ///
 /// ```
 /// use seqdiff;
-/// let nan_eq = |a: &f64, b: &f64| if a.is_nan() && b.is_nan() { true } else { a == b };
+/// let nan_eq = |a: &f64, b: &f64| {
+///     if a.is_nan() && b.is_nan() {
+///         true
+///     } else {
+///         a == b
+///     }
+/// };
 /// let (a2b, b2a) = seqdiff::diff_by(&[1., 2., f64::NAN], &[1., f64::NAN], nan_eq);
 /// assert_eq!(a2b, vec![Some(0), None, Some(1)]);
 /// assert_eq!(b2a, vec![Some(0), Some(2)]);
@@ -121,4 +136,38 @@ where
     F: Fn(&A, &B) -> bool,
 {
     path_to_diff(get_shortest_edit_path(a, b, is_eq))
+}
+
+/// Compute similarity of two sequences.
+/// The similarity is a floating point number in [0., 100.], computed based on
+/// Levenshtein distance.
+/// This is useful, for example, fuzzy search.
+///
+/// # Examples
+///
+/// ```
+/// use seqdiff::ratio;
+/// let r = ratio(
+///     &"Hello world!".chars().collect::<Vec<_>>(),
+///     &"Holly grail!".chars().collect::<Vec<_>>(),
+/// );
+/// assert!((r - 58.333333333333337).abs() < 1e-5);
+/// ```
+#[allow(clippy::many_single_char_names)]
+pub fn ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
+    let l = a.len() + b.len();
+    if l == 0 {
+        return 100.;
+    }
+    let mut path = get_shortest_edit_path_myers(a, b, <A as PartialEq<B>>::eq);
+    let (mut i, mut j) = path.next().unwrap();
+    let mut ret = 0;
+    for (pi, pj) in path {
+        if (i - pi) + (j - pj) == 2 {
+            ret += 1;
+        }
+        i = pi;
+        j = pj;
+    }
+    (ret * 200) as f64 / l as f64
 }
