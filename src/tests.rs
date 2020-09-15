@@ -104,9 +104,18 @@ pub fn slow_ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
     if l == 0 {
         return 100.;
     }
-    let (a2b, _) = diff_by(a, b, <A as PartialEq<B>>::eq);
+    let (a2b, _) = diff(a, b);
     let m = a2b.iter().filter(|x| x.is_some()).count() * 2;
     ((100 * m) as f64) / (l as f64)
+}
+
+#[quickcheck]
+fn distance_consistency(s: Vec<char>, t: Vec<char>) {
+    let (dist, path) = get_shortest_edit_path(&s, &t, char::eq, true);
+    let (a2b, _) = path_to_diff(path.unwrap());
+    let n = a2b.iter().filter(|x| x.is_some()).count() * 2;
+    let m = s.len() + t.len() - dist;
+    assert_eq!(n, m);
 }
 
 #[quickcheck]
