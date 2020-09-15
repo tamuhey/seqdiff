@@ -3,14 +3,14 @@
 #![deny(warnings)]
 #[cfg(test)]
 mod tests;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 #[cfg(test)]
 extern crate quickcheck;
 #[cfg(test)]
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord)]
 enum Node {
     P((usize, usize)),
     Root,
@@ -34,7 +34,7 @@ where
     let bound = n + m;
     let get_y = |x, k| x + bound - k;
     let mut v = vec![0; 2 * bound + 1];
-    let mut nodes_map = HashMap::new();
+    let mut nodes_map = BTreeMap::new();
     'outer: for d in 0..=bound {
         for k in ((bound - d)..=bound + d).step_by(2) {
             let (mut x, parent) = if d == 0 {

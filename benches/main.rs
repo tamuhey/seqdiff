@@ -1,11 +1,5 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use seqdiff;
-
-fn bench_ratio(c: &mut Criterion) {
-    let s = black_box("1 1 1 1 1 1 1 1 1 1".chars().collect::<Vec<_>>());
-    let t = black_box("1 2 1 1 2 1 1 4 1 1".chars().collect::<Vec<_>>());
-    c.bench_function("ratio", |b| b.iter(|| seqdiff::ratio(&s, &t)));
-}
 
 fn slow_ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
     let l = a.len() + b.len();
@@ -26,5 +20,5 @@ fn bench_ratios(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_ratio, bench_ratios);
+criterion_group!(benches, bench_ratios);
 criterion_main!(benches);
