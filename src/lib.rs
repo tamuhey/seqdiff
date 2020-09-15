@@ -25,7 +25,8 @@ fn get_shortest_edit_path<A, B, F>(
     a: &[A],
     b: &[B],
     is_eq: F,
-) -> impl Iterator<Item = (usize, usize)>
+    get_path: bool,
+) -> (usize, Option<impl Iterator<Item = (usize, usize)>>)
 where
     F: Fn(&A, &B) -> bool,
 {
@@ -35,6 +36,7 @@ where
     let get_y = |x, k| x + bound - k;
     let mut v = vec![0; 2 * bound + 1];
     let mut nodes_map = BTreeMap::new();
+    let mut distance = !0;
     'outer: for d in 0..=bound {
         for k in ((bound - d)..=bound + d).step_by(2) {
             let (mut x, parent) = if d == 0 {
@@ -47,30 +49,37 @@ where
                 (px + 1, Node::P((px, get_y(px, k - 1))))
             };
             let mut y = get_y(x, k);
-            nodes_map.insert(Node::P((x, y)), parent);
+            if get_path {
+                nodes_map.insert(Node::P((x, y)), parent);
+            }
             while x < n && y < m && is_eq(&a[x], &b[y]) {
                 x += 1;
                 y += 1;
             }
             v[k] = x;
             if x >= n && y >= m {
+                distance = d;
                 break 'outer;
             }
         }
     }
-
-    let mut cur = Node::P((n, m));
-    std::iter::from_fn(move || match cur {
-        Node::Root => None,
-        Node::P(ncur) => {
-            cur = if let Some(cur) = nodes_map.get(&Node::P(ncur)) {
-                *cur
-            } else {
-                Node::P((ncur.0 - 1, ncur.1 - 1))
-            };
-            Some(ncur)
-        }
-    })
+    if get_path {
+        let mut cur = Node::P((n, m));
+        let path = std::iter::from_fn(move || match cur {
+            Node::Root => None,
+            Node::P(ncur) => {
+                cur = if let Some(cur) = nodes_map.get(&Node::P(ncur)) {
+                    *cur
+                } else {
+                    Node::P((ncur.0 - 1, ncur.1 - 1))
+                };
+                Some(ncur)
+            }
+        });
+        (distance, Some(path))
+    } else {
+        (distance, None)
+    }
 }
 
 fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) {
@@ -138,7 +147,7 @@ pub fn diff_by<A, B, F>(a: &[A], b: &[B], is_eq: F) -> (Diff, Diff)
 where
     F: Fn(&A, &B) -> bool,
 {
-    path_to_diff(get_shortest_edit_path(a, b, is_eq))
+    path_to_diff(get_shortest_edit_path(a, b, is_eq, true).1.unwrap())
 }
 
 /// Compute similarity of two sequences.
@@ -162,15 +171,6 @@ pub fn ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
     if l == 0 {
         return 100.;
     }
-    let mut path = get_shortest_edit_path(a, b, <A as PartialEq<B>>::eq);
-    let (mut i, mut j) = path.next().unwrap();
-    let mut ret = 0;
-    for (pi, pj) in path {
-        if (i - pi) + (j - pj) == 2 {
-            ret += 1;
-        }
-        i = pi;
-        j = pj;
-    }
-    (ret * 200) as f64 / l as f64
+    let ret = l - get_shortest_edit_path(a, b, <A as PartialEq<B>>::eq, false).0;
+    (ret * 100) as f64 / l as f64
 }
