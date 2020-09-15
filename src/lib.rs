@@ -141,6 +141,7 @@ where
 /// Compute similarity of two sequences.
 /// The similarity is a floating point number in [0., 100.], computed based on
 /// Levenshtein distance.
+/// This is useful, for example, fuzzy search.
 ///
 /// # Examples
 ///
