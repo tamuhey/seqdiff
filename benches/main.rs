@@ -1,6 +1,14 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use seqdiff;
 
+fn bench_diff(c: &mut Criterion) {
+    let s = vec![1, 2, 3, 2, 1, 2, 3, 3];
+    let t = vec![1, 2, 3, 2, 1, 2, 3, 3];
+    let s = s.repeat(100);
+    let t = t.repeat(100);
+    c.bench_function("bench diff", |b| b.iter(|| seqdiff::diff(&s, &t)));
+}
+
 fn slow_ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
     let l = a.len() + b.len();
     if l == 0 {
@@ -20,5 +28,5 @@ fn bench_ratios(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_ratios);
+criterion_group!(benches, bench_ratios, bench_diff);
 criterion_main!(benches);
