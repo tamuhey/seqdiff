@@ -35,7 +35,11 @@ where
     let bound = n + m;
     let get_y = |x, k| x + bound - k;
     let mut v = vec![0; 2 * bound + 1];
-    let mut nodes_map = BTreeMap::new();
+    let mut nodes_map = if get_path {
+        Some(BTreeMap::new())
+    } else {
+        None
+    };
     let mut distance = !0;
     'outer: for d in 0..=bound {
         for k in ((bound - d)..=bound + d).step_by(2) {
@@ -50,7 +54,7 @@ where
             };
             let mut y = get_y(x, k);
             if get_path {
-                nodes_map.insert(Node::P((x, y)), parent);
+                nodes_map.as_mut().unwrap().insert(Node::P((x, y)), parent);
             }
             while x < n && y < m && is_eq(&a[x], &b[y]) {
                 x += 1;
@@ -63,8 +67,10 @@ where
             }
         }
     }
+    debug_assert_ne!(distance, !0);
     if get_path {
         let mut cur = Node::P((n, m));
+        let nodes_map = nodes_map.unwrap();
         let path = std::iter::from_fn(move || match cur {
             Node::Root => None,
             Node::P(ncur) => {
