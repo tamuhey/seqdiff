@@ -153,6 +153,7 @@ where
 /// );
 /// assert!((r - 58.333333333333337).abs() < 1e-5);
 /// ```
+#[allow(clippy::many_single_char_names)]
 pub fn ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
     let l = a.len() + b.len();
     if l == 0 {
