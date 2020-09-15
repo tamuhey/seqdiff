@@ -49,7 +49,6 @@ where
             let mut y = get_y(x, k);
             nodes_map.insert(Node::P((x, y)), parent);
             while x < n && y < m && is_eq(&a[x], &b[y]) {
-                nodes_map.insert(Node::P((x + 1, y + 1)), Node::P((x, y)));
                 x += 1;
                 y += 1;
             }
@@ -64,7 +63,11 @@ where
     std::iter::from_fn(move || match cur {
         Node::Root => None,
         Node::P(ncur) => {
-            cur = *nodes_map.get(&Node::P(ncur)).unwrap();
+            cur = if let Some(cur) = nodes_map.get(&Node::P(ncur)) {
+                *cur
+            } else {
+                Node::P((ncur.0 - 1, ncur.1 - 1))
+            };
             Some(ncur)
         }
     })
