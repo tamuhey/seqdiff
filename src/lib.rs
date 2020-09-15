@@ -20,7 +20,7 @@ enum Node {
 ///
 /// See [An O(ND) Difference Algorithm and Its Variations](http://www.xmailserver.org/diff2.pdf)
 #[allow(clippy::many_single_char_names)]
-fn get_shortest_edit_path_myers<A, B, F>(
+fn get_shortest_edit_path<A, B, F>(
     a: &[A],
     b: &[B],
     is_eq: F,
@@ -120,5 +120,5 @@ pub fn diff_by<A, B, F>(a: &[A], b: &[B], is_eq: F) -> (Diff, Diff)
 where
     F: Fn(&A, &B) -> bool,
 {
-    path_to_diff(get_shortest_edit_path_myers(a, b, is_eq))
+    path_to_diff(get_shortest_edit_path(a, b, is_eq))
 }
