@@ -116,14 +116,14 @@ fn quick_ratio(s: Vec<char>, t: Vec<char>) {
 
 #[quickcheck]
 fn quick_ratio_same(s: Vec<char>) {
-    assert!((ratio(&s, &s) - 100f64).abs() < f64::EPSILON);
+    assert!((ratio(&s, &s) - 100f64).abs() < 1e-5);
 }
 
 #[quickcheck]
 fn quick_ratio_with_slow(s: Vec<char>, t: Vec<char>) {
     let slow = slow_ratio(&s, &t);
     let fast = ratio(&s, &t);
-    assert!((slow - fast).abs() < f64::EPSILON);
+    assert!((slow - fast).abs() < 1e-5);
 }
 
 #[rstest(
@@ -141,6 +141,6 @@ fn test_ratio(s: &str, t: &str, expected: f64) {
             &t.chars().collect::<Vec<_>>()
         ) - expected)
             .abs()
-            < f64::EPSILON
+            < 1e-5
     );
 }
