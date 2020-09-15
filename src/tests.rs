@@ -131,16 +131,18 @@ fn quick_ratio_with_slow(s: Vec<char>, t: Vec<char>) {
     t,
     expected,
     case("abc", "abc", 100.),
-    case("abc", "abd", 66.6667),
+    case("abc", "abd", 66.66666667),
     case("abc", "abddddd", 40.)
 )]
 fn test_ratio(s: &str, t: &str, expected: f64) {
+    let ret = ratio(
+        &s.chars().collect::<Vec<_>>(),
+        &t.chars().collect::<Vec<_>>(),
+    );
     assert!(
-        (ratio(
-            &s.chars().collect::<Vec<_>>(),
-            &t.chars().collect::<Vec<_>>()
-        ) - expected)
-            .abs()
-            < 1e-5
+        (ret - expected).abs() < 1e-5,
+        "expected: {}\nresult: {}",
+        expected,
+        ret
     );
 }
