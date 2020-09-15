@@ -122,3 +122,21 @@ where
 {
     path_to_diff(get_shortest_edit_path_myers(a, b, is_eq))
 }
+
+pub fn ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
+    let l = a.len() + b.len();
+    if l == 0 {
+        return 100.;
+    }
+    let mut path = get_shortest_edit_path_myers(a, b, <A as PartialEq<B>>::eq);
+    let (mut i, mut j) = path.next().unwrap();
+    let mut ret = 0;
+    for (pi, pj) in path {
+        if (i - pi) + (j - pj) == 2 {
+            ret += 1;
+        }
+        i = pi;
+        j = pj;
+    }
+    (ret * 200) as f64 / l as f64
+}

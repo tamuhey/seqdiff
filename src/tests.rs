@@ -1,5 +1,5 @@
 use crate::*;
-#[cfg(test)]
+use rstest::rstest;
 struct EditPathFromGrid {
     // This struct is only for testing
     // Inefficient but simple algorithm
@@ -8,7 +8,6 @@ struct EditPathFromGrid {
     exhausted: bool,
 }
 
-#[cfg(test)]
 impl Iterator for EditPathFromGrid {
     type Item = (usize, usize);
     fn next(&mut self) -> Option<Self::Item> {
@@ -42,7 +41,6 @@ impl Iterator for EditPathFromGrid {
 }
 
 #[allow(clippy::many_single_char_names)]
-#[cfg(test)]
 fn get_shortest_edit_path_grid<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> EditPathFromGrid {
     let n = a.len();
     let m = b.len();
@@ -99,4 +97,50 @@ fn test_diff() {
         let ret = diff(a, b);
         assert_eq!(ret, *expected);
     }
+}
+
+pub fn slow_ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
+    let l = a.len() + b.len();
+    if l == 0 {
+        return 100.;
+    }
+    let (a2b, _) = diff_by(a, b, <A as PartialEq<B>>::eq);
+    let m = a2b.iter().filter(|x| x.is_some()).count() * 2;
+    ((100 * m) as f64) / (l as f64)
+}
+
+#[quickcheck]
+fn quick_ratio(s: Vec<char>, t: Vec<char>) {
+    ratio(&s, &t);
+}
+
+#[quickcheck]
+fn quick_ratio_same(s: Vec<char>) {
+    assert_eq!(ratio(&s, &s), 100.);
+}
+
+#[quickcheck]
+fn quick_ratio_with_slow(s: Vec<char>, t: Vec<char>) {
+    let slow = slow_ratio(&s, &t);
+    let fast = ratio(&s, &t);
+    assert!((slow - fast).abs() < 1e-5);
+}
+
+#[rstest(
+    s,
+    t,
+    expected,
+    case("abc", "abc", 100.),
+    case("abc", "abd", 66.6667),
+    case("abc", "abddddd", 40.)
+)]
+fn test_ratio(s: &str, t: &str, expected: f64) {
+    assert!(
+        (ratio(
+            &s.chars().collect::<Vec<_>>(),
+            &t.chars().collect::<Vec<_>>()
+        ) - expected)
+            .abs()
+            < 1e-3
+    );
 }
