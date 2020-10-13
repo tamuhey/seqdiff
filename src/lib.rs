@@ -16,7 +16,7 @@ enum Node {
     Root,
 }
 
-/// Returns an iterator over the shotest path of the edit graph based on Myers'
+/// Returns an iterator over the shortest path of the edit graph based on Myers'
 /// diff algorithm.
 ///
 /// See [An O(ND) Difference Algorithm and Its Variations](http://www.xmailserver.org/diff2.pdf)
