@@ -1,6 +1,5 @@
 //! Functions to get correspondence between two sequences like diff,
 //! based on Myers' algorithm.
-#![deny(warnings)]
 #[cfg(test)]
 mod tests;
 use std::collections::HashMap;
@@ -175,4 +174,72 @@ pub fn ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
     }
     let ret = l - get_shortest_edit_path(a, b, <A as PartialEq<B>>::eq, false).0;
     (ret * 100) as f64 / l as f64
+}
+
+#[cfg(test)]
+mod old {
+    use super::*;
+    #[allow(clippy::many_single_char_names)]
+    pub fn get_shortest_edit_path<A, B, F>(
+        a: &[A],
+        b: &[B],
+        is_eq: F,
+        get_path: bool,
+    ) -> (usize, Option<impl Iterator<Item = (usize, usize)>>)
+    where
+        F: Fn(&A, &B) -> bool,
+    {
+        let n = a.len();
+        let m = b.len();
+        let bound = n + m;
+        let get_y = |x, k| x + bound - k;
+        let mut v = vec![0; 2 * bound + 1];
+        let mut nodes_map = if get_path { Some(HashMap::new()) } else { None };
+        let mut distance = !0;
+        'outer: for d in 0..=bound {
+            for k in ((bound - d)..=bound + d).step_by(2) {
+                let (mut x, parent) = if d == 0 {
+                    (0, Node::Root)
+                } else if k == (bound - d) || k != (bound + d) && v[k - 1] < v[k + 1] {
+                    let px = v[k + 1];
+                    (px, Node::P((px, get_y(px, k + 1))))
+                } else {
+                    let px = v[k - 1];
+                    (px + 1, Node::P((px, get_y(px, k - 1))))
+                };
+                let mut y = get_y(x, k);
+                if get_path {
+                    nodes_map.as_mut().unwrap().insert(Node::P((x, y)), parent);
+                }
+                while x < n && y < m && is_eq(&a[x], &b[y]) {
+                    x += 1;
+                    y += 1;
+                }
+                v[k] = x;
+                if x >= n && y >= m {
+                    distance = d;
+                    break 'outer;
+                }
+            }
+        }
+        debug_assert_ne!(distance, !0);
+        if get_path {
+            let mut cur = Node::P((n, m));
+            let nodes_map = nodes_map.unwrap();
+            let path = std::iter::from_fn(move || match cur {
+                Node::Root => None,
+                Node::P(ncur) => {
+                    cur = if let Some(cur) = nodes_map.get(&Node::P(ncur)) {
+                        *cur
+                    } else {
+                        Node::P((ncur.0 - 1, ncur.1 - 1))
+                    };
+                    Some(ncur)
+                }
+            });
+            (distance, Some(path))
+        } else {
+            (distance, None)
+        }
+    }
 }

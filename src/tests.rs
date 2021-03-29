@@ -72,6 +72,20 @@ fn get_shortest_edit_path_grid<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> EditPath
 }
 
 #[quickcheck]
+fn randomcheck_with_old(a: Vec<char>, b: Vec<char>) {
+    let v = path_to_diff(
+        old::get_shortest_edit_path(&a, &b, char::eq, true)
+            .1
+            .unwrap(),
+    );
+    let w = diff(&a, &b);
+    assert_eq!(v, w);
+    let (a2b, b2a) = w;
+    assert_eq!(a.len(), a2b.len());
+    assert_eq!(b.len(), b2a.len());
+}
+
+#[quickcheck]
 fn randomcheck_myers_with_dp(a: Vec<char>, b: Vec<char>) {
     let v = path_to_diff(get_shortest_edit_path_grid(&a, &b));
     let w = diff(&a, &b);
