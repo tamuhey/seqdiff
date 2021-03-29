@@ -2,10 +2,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use seqdiff;
 
 fn bench_diff(c: &mut Criterion) {
-    let s = black_box(vec![1, 2, 3, 3, 1, 2, 3, 3]);
-    let t = black_box(vec![1, 2, 2, 1, 2, 3, 3]);
-    let s = s.repeat(black_box(100));
-    let t = t.repeat(black_box(100));
+    let s = black_box(vec![1, 2, 3, 3, 1, 2, 3, 3].repeat(300));
+    let t = black_box(vec![1, 2, 2, 1, 2, 3, 3].repeat(300));
     c.bench_function("bench diff", |b| b.iter(|| seqdiff::diff(&s, &t)));
 }
 
