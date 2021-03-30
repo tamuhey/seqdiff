@@ -2,6 +2,7 @@
 //! based on Myers' algorithm.
 #[cfg(test)]
 mod tests;
+use std::cmp::{max, min};
 use std::collections::HashMap;
 #[cfg(test)]
 extern crate quickcheck;
@@ -9,79 +10,120 @@ extern crate quickcheck;
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord)]
-enum Node {
-    P((usize, usize)),
-    Root,
+struct Difference<'a, X, Y> {
+    xv: &'a [X],
+    yv: &'a [Y],
+
+    // working memory for forward path
+    vf: Vec<usize>,
+    // working memory for backward path
+    vb: Vec<usize>,
 }
 
-/// Returns an iterator over the shotest path of the edit graph based on Myers'
-/// diff algorithm.
-///
-/// See [An O(ND) Difference Algorithm and Its Variations](http://www.xmailserver.org/diff2.pdf)
-#[allow(clippy::many_single_char_names)]
-fn get_shortest_edit_path<A, B, F>(
-    a: &[A],
-    b: &[B],
-    is_eq: F,
-    get_path: bool,
-) -> (usize, Option<impl Iterator<Item = (usize, usize)>>)
+impl<'a, X, Y> Difference<'a, X, Y>
 where
-    F: Fn(&A, &B) -> bool,
+    X: PartialEq<Y>,
 {
-    let n = a.len();
-    let m = b.len();
-    let bound = n + m;
-    let get_y = |x, k| x + bound - k;
-    let mut v = vec![0; 2 * bound + 1];
-    let mut nodes_map = if get_path { Some(HashMap::new()) } else { None };
-    let mut distance = !0;
-    'outer: for d in 0..=bound {
-        for k in ((bound - d)..=bound + d).step_by(2) {
-            let (mut x, parent) = if d == 0 {
-                (0, Node::Root)
-            } else if k == (bound - d) || k != (bound + d) && v[k - 1] < v[k + 1] {
-                let px = v[k + 1];
-                (px, Node::P((px, get_y(px, k + 1))))
-            } else {
-                let px = v[k - 1];
-                (px + 1, Node::P((px, get_y(px, k - 1))))
-            };
-            let mut y = get_y(x, k);
-            if get_path {
-                nodes_map.as_mut().unwrap().insert(Node::P((x, y)), parent);
+    fn new(xv: &'a [X], yv: &'a [Y]) -> Self {
+        let dmax = xv.len() + yv.len() + 1;
+        let vf = vec![0usize; dmax];
+        let vb = vec![xv.len(); dmax];
+        Self { xv, yv, vf, vb }
+    }
+
+    #[allow(clippy::many_single_char_names)]
+    fn find_mid(
+        &mut self,
+        (xl, xr): (usize, usize),
+        (yl, yr): (usize, usize),
+    ) -> (usize, (usize, usize), (usize, usize)) {
+        if xl == xr || yl == yr {
+            return (max(xr - xl, yr - yl), (xl, yl), (xl, yl));
+        }
+        let ktoi = |k: i64| (k + (yr - yl) as i64) as usize; // convert diagonal coordinate (k) to working memory index
+        let kmin = -((yr - yl) as i64);
+        let kmax = (xr - xl) as i64;
+        let gety = |x: usize, k| ((x as i64) - k) as usize;
+        let delta = (xr - xl) as i64 - (yr - yl) as i64;
+        let is_odd = delta % 2 != 0;
+        for d in 0i64.. {
+            // expand forward snake
+            let kl = max(-d, kmin);
+            let kr = min(d, kmax);
+            for k in (kl..=kr).step_by(2) {
+                let x = if d == 0 {
+                    xl
+                } else if k == kl || k != kr && self.vf[ktoi(k - 1)] < self.vf[ktoi(k + 1)] {
+                    self.vf[ktoi(k + 1)]
+                } else {
+                    self.vf[ktoi(k - 1)] + 1
+                };
+                let y = gety(x, k);
+                let mut u = x;
+                let mut v = y;
+                while u < xr && v < yr && self.xv[u] == self.yv[v] {
+                    u += 1;
+                    v += 1;
+                }
+                self.vf[ktoi(k)] = u;
+                if is_odd && delta - (d - 1) <= k && k <= delta + (d - 1) && self.vb[ktoi(k)] <= u {
+                    return (2 * d as usize - 1, (x, y), (u, v));
+                }
             }
-            while x < n && y < m && is_eq(&a[x], &b[y]) {
-                x += 1;
-                y += 1;
-            }
-            v[k] = x;
-            if x >= n && y >= m {
-                distance = d;
-                break 'outer;
+
+            // expand backward snake
+            for k in (kl..=kr).step_by(2) {
+                let x = if d == 0 {
+                    xr
+                } else if k == kl || k != kr && self.vb[ktoi(k - 1)] > self.vb[ktoi(k + 1)] {
+                    self.vb[ktoi(k + 1)] - 1
+                } else {
+                    self.vb[ktoi(k - 1)]
+                };
+                let y = gety(x, k + delta);
+                let mut u = x;
+                let mut v = y;
+                while u > xl && v > yl && self.xv[u - 1] == self.yv[v - 1] {
+                    u -= 1;
+                    v -= 1;
+                }
+                self.vb[ktoi(k)] = u;
+                let fk = self.vf[ktoi(k)];
+                if !is_odd && -d <= k + delta && k + delta <= d && fk >= u {
+                    return (2 * d as usize, (u, v), (x, y));
+                }
             }
         }
-    }
-    debug_assert_ne!(distance, !0);
-    if get_path {
-        let mut cur = Node::P((n, m));
-        let nodes_map = nodes_map.unwrap();
-        let path = std::iter::from_fn(move || match cur {
-            Node::Root => None,
-            Node::P(ncur) => {
-                cur = if let Some(cur) = nodes_map.get(&Node::P(ncur)) {
-                    *cur
-                } else {
-                    Node::P((ncur.0 - 1, ncur.1 - 1))
-                };
-                Some(ncur)
-            }
-        });
-        (distance, Some(path))
-    } else {
-        (distance, None)
+        unreachable!();
     }
 }
+
+#[test]
+fn find_mid() {
+    use std::array::IntoIter;
+    let testcases = IntoIter::new([
+        (vec![0], vec![0, 0, 0], (2, (0, 0), (1, 1))),
+        (vec![0], vec![], (1, (0, 0), (0, 0))),
+        (vec![], vec![0], (1, (0, 0), (0, 0))),
+        (vec![], vec![], (0, (0, 0), (0, 0))),
+        (vec![0, 1, 2], vec![0, 1, 1, 2], (1, (2, 3), (3, 4))),
+        (vec![0, 1, 1, 2], vec![0, 1, 2], (1, (3, 2), (4, 3))),
+        (vec![0, 1, 2, 3], vec![0, 1, 2], (1, (4, 3), (4, 3))),
+        (vec![0, 1, 2], vec![0, 2, 2], (2, (1, 2), (1, 2))),
+        (vec![0, 2, 2], vec![0, 1, 2], (2, (1, 2), (1, 2))),
+        (vec![0, 1, 2], vec![0, 1, 2], (0, (0, 0), (3, 3))),
+    ]);
+    for (xv, yv, expected) in testcases {
+        let n = xv.len();
+        let m = yv.len();
+        let mut diff = Difference::new(&xv, &yv);
+        let ret = diff.find_mid((0, n), (0, m));
+        assert_eq!(ret, expected, "\nxv: {:?}\nyv: {:?}", xv, yv);
+    }
+}
+
+#[cfg(test)]
+use self::old::get_shortest_edit_path;
 
 fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) {
     let (mut i, mut j) = path.next().unwrap();
@@ -179,6 +221,13 @@ pub fn ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
 #[cfg(test)]
 mod old {
     use super::*;
+
+    #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord)]
+    enum Node {
+        P((usize, usize)),
+        Root,
+    }
+
     #[allow(clippy::many_single_char_names)]
     pub fn get_shortest_edit_path<A, B, F>(
         a: &[A],

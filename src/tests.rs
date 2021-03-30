@@ -133,6 +133,13 @@ fn distance_consistency(s: Vec<char>, t: Vec<char>) {
 }
 
 #[quickcheck]
+fn quick_diff_num_with_old(s: Vec<char>, t: Vec<char>) {
+    let a = get_shortest_edit_path(&s, &t, char::eq, false).0;
+    let mut diff = Difference::new(&s, &t);
+    assert_eq!(a, diff.find_mid((0, s.len()), (0, t.len())).0)
+}
+
+#[quickcheck]
 fn quick_ratio(s: Vec<char>, t: Vec<char>) {
     ratio(&s, &t);
 }
