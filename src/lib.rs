@@ -49,7 +49,7 @@ where
             return (max(xr - xl, yr - yl), (xl, yl), (xl, yl));
         }
         let offset_d = self.offset_d;
-        debug_print!("{:?}", offset_d);
+        println!("{:?}", offset_d);
         let ktoi = |k: i64| (k + offset_d as i64) as usize; // convert diagonal coordinate (k) to working memory index
         let gety = |x: usize, k| ((x as i64) - k) as usize;
         let delta = (xr - xl) as i64 - (yr - yl) as i64;
