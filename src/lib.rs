@@ -77,6 +77,7 @@ where
                     return (2 * d as usize - 1, (x, y), (u, v));
                 }
             }
+            println!("{:?}", self.vf);
 
             // expand backward snake
             for k in (kl..=kr).step_by(2) {
