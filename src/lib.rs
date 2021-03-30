@@ -18,6 +18,7 @@ struct Difference<'a, X, Y> {
     vf: Vec<usize>,
     // working memory for backward path
     vb: Vec<usize>,
+    offset_d: usize,
 }
 
 impl<'a, X, Y> Difference<'a, X, Y>
@@ -26,9 +27,16 @@ where
 {
     fn new(xv: &'a [X], yv: &'a [Y]) -> Self {
         let dmax = xv.len() + yv.len() + 1;
+        let offset_d = yv.len();
         let vf = vec![0usize; dmax];
         let vb = vec![xv.len(); dmax];
-        Self { xv, yv, vf, vb }
+        Self {
+            xv,
+            yv,
+            vf,
+            vb,
+            offset_d,
+        }
     }
 
     #[allow(clippy::many_single_char_names)]
@@ -40,16 +48,15 @@ where
         if xl == xr || yl == yr {
             return (max(xr - xl, yr - yl), (xl, yl), (xl, yl));
         }
-        let ktoi = |k: i64| (k + (yr - yl) as i64) as usize; // convert diagonal coordinate (k) to working memory index
-        let kmin = -((yr - yl) as i64);
-        let kmax = (xr - xl) as i64;
+        let offset_d = self.offset_d;
+        let ktoi = |k: i64| (k + offset_d as i64) as usize; // convert diagonal coordinate (k) to working memory index
         let gety = |x: usize, k| ((x as i64) - k) as usize;
         let delta = (xr - xl) as i64 - (yr - yl) as i64;
         let is_odd = delta % 2 != 0;
         for d in 0i64.. {
             // expand forward snake
-            let kl = max(-d, kmin);
-            let kr = min(d, kmax);
+            let kl = -d;
+            let kr = d;
             for k in (kl..=kr).step_by(2) {
                 let x = if d == 0 {
                     xl
