@@ -10,6 +10,9 @@ extern crate quickcheck;
 extern crate quickcheck_macros;
 use std::isize::{MAX, MIN};
 
+/// An alias for the result of diff type
+pub type Diff = Vec<Option<usize>>;
+
 struct Difference<'a, X, Y> {
     xv: &'a [X],
     yv: &'a [Y],
@@ -19,6 +22,11 @@ struct Difference<'a, X, Y> {
     // working memory for backward path
     vb: Vec<isize>,
     offset_d: isize,
+
+    // edit script for xv
+    xe: Vec<Option<usize>>,
+    // edit script for yv
+    ye: Vec<Option<usize>>,
 }
 
 impl<'a, X, Y> Difference<'a, X, Y>
@@ -30,12 +38,61 @@ where
         let offset_d = yv.len() as isize;
         let vf = vec![MIN; dmax];
         let vb = vec![MAX; dmax];
+        let xe = vec![None; xv.len()];
+        let ye = vec![None; yv.len()];
         Self {
             xv,
             yv,
             vf,
             vb,
             offset_d,
+            xe,
+            ye,
+        }
+    }
+
+    fn diff(&mut self) -> usize {
+        self.diff_part((0, self.xv.len()), (0, self.yv.len()))
+    }
+
+    fn diff_part(
+        &mut self,
+        (mut xl, mut xr): (usize, usize),
+        (mut yl, mut yr): (usize, usize),
+    ) -> usize {
+        // shrink by equality
+        while xl < xr && yl < yr && self.xv[xl] == self.yv[yl] {
+            self.xe[xl] = Some(yl);
+            self.ye[yl] = Some(xl);
+            xl += 1;
+            yl += 1;
+        }
+        // same as backward
+        while xl < xr && yl < yr && self.xv[xr - 1] == self.yv[yr - 1] {
+            xr -= 1;
+            yr -= 1;
+            self.xe[xr] = Some(yr);
+            self.ye[yr] = Some(xr);
+        }
+
+        // process simple case
+        if xl == xr {
+            for i in yl..yr {
+                self.ye[i] = None;
+            }
+            yr - yl
+        } else if yl == yr {
+            for i in xl..xr {
+                self.xe[i] = None;
+            }
+            xr - xl
+
+        // divide and conquer
+        } else {
+            let (d, (xm, ym)) = self.find_mid((xl, xr), (yl, yr));
+            self.diff_part((xl, xm), (yl, ym));
+            self.diff_part((xm, xr), (ym, yr));
+            d
         }
     }
 
@@ -44,7 +101,7 @@ where
         &mut self,
         (xl, xr): (usize, usize),
         (yl, yr): (usize, usize),
-    ) -> (usize, (usize, usize), (usize, usize)) {
+    ) -> (usize, (usize, usize)) {
         let xl = xl as isize;
         let xr = xr as isize;
         let yl = yl as isize;
@@ -92,7 +149,7 @@ where
                     }
                 }
 
-                for k in (kminf..=kmaxf).step_by(2) {
+                for k in (kminf..=kmaxf).rev().step_by(2) {
                     let ik = ktoi(k);
                     let x = if d == 0 {
                         xl
@@ -119,11 +176,7 @@ where
 
                     self.vf[ik] = u;
                     if is_odd && kminb <= k && k <= kmaxb && self.vb[ik] <= u {
-                        return (
-                            2 * d as usize - 1,
-                            (x as usize, y as usize),
-                            (u as usize, v as usize),
-                        );
+                        return (2 * d as usize - 1, (x as usize, y as usize));
                     }
                 }
             }
@@ -145,7 +198,7 @@ where
                         kmaxb -= 1
                     }
                 }
-                for k in (kminb..=kmaxb).step_by(2) {
+                for k in (kminb..=kmaxb).rev().step_by(2) {
                     let x = if d == 0 {
                         xr
                     } else {
@@ -177,11 +230,7 @@ where
                     let ik = ktoi(k);
                     self.vb[ik] = u;
                     if !is_odd && kminf <= k && k <= kmaxf && self.vf[ik] >= u {
-                        return (
-                            2 * d as usize,
-                            (u as usize, v as usize),
-                            (x as usize, y as usize),
-                        );
+                        return (2 * d as usize, (x as usize, y as usize));
                     }
                 }
             }
@@ -190,9 +239,6 @@ where
         unreachable!();
     }
 }
-
-/// An alias for the result of diff type
-pub type Diff = Vec<Option<usize>>;
 
 /// Returns the correspondence between two sequences.
 ///
@@ -211,7 +257,10 @@ pub type Diff = Vec<Option<usize>>;
 /// assert_eq!(b2a, vec![Some(0), Some(2)]);
 /// ```
 pub fn diff<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> (Diff, Diff) {
-    unimplemented!()
+    let mut st = Difference::new(a, b);
+    st.diff();
+    let Difference { xe, ye, .. } = st;
+    (xe, ye)
 }
 
 /// Compute similarity of two sequences.
