@@ -68,16 +68,34 @@ where
         for d in 0i64.. {
             // forward
             {
+                // update range
+                if d > 0 {
+                    if kminf > kmin {
+                        kminf -= 1;
+                        if let Some(x) = self.vf.get_mut(ktoi(kminf - 1)) {
+                            *x = 0
+                        }
+                    } else {
+                        kminf += 1;
+                    }
+                    if kmaxf < kmax {
+                        kmaxf += 1;
+                        if let Some(x) = self.vf.get_mut(ktoi(kmaxf + 1)) {
+                            *x = 0;
+                        }
+                    } else {
+                        kmaxf -= 1
+                    }
+                }
+
                 for k in (kminf..=kmaxf).step_by(2) {
-                    let ikhi = ktoi(k + 1);
-                    let iklo = ktoi(k - 1);
                     let ik = ktoi(k);
                     let x = if d == 0 {
                         xl
-                    } else if k == kminf || k != kmaxf && self.vf[iklo] < self.vf[ikhi] {
-                        self.vf[ikhi]
                     } else {
-                        self.vf[iklo] + 1
+                        let lo = self.vf.get(ktoi(k - 1)).cloned();
+                        let hi = self.vf.get(ktoi(k + 1)).cloned();
+                        max(lo.map(|x| x + 1), hi).unwrap()
                     };
                     let y = gety(x, k);
                     let mut u = x;
@@ -96,25 +114,32 @@ where
 
             // backward
             {
+                if d > 0 {
+                    // update range
+                    if kminb > kmin {
+                        kminb -= 1;
+                        if let Some(x) = self.vb.get_mut(ktoi(kminb - 1)) {
+                            *x = !0usize;
+                        }
+                    } else {
+                        kminb += 1;
+                    }
+                    if kmaxb < kmax {
+                        kmaxb += 1;
+                        if let Some(x) = self.vb.get_mut(ktoi(kmaxb + 1)) {
+                            *x = !0usize;
+                        }
+                    } else {
+                        kmaxb -= 1
+                    }
+                }
                 for k in (kminb..=kmaxb).step_by(2) {
                     let x = if d == 0 {
                         xr
                     } else {
-                        match (
-                            self.vb.get(ktoi(k - 1)).cloned(),
-                            self.vb.get(ktoi(k + 1)).cloned(),
-                        ) {
-                            (None, None) => unreachable!(),
-                            (Some(lo), Some(hi)) => {
-                                if hi < lo {
-                                    hi - 1
-                                } else {
-                                    lo
-                                }
-                            }
-                            (Some(x), _) => x,
-                            (_, Some(x)) => x,
-                        }
+                        let lo = self.vb.get(ktoi(k - 1)).cloned();
+                        let hi = self.vb.get(ktoi(k + 1)).cloned();
+                        max(lo, hi.map(|x| x - 1)).unwrap()
                     };
                     let y = gety(x, k);
                     let mut u = x;
@@ -131,41 +156,6 @@ where
                 }
             }
             println!("vb {:?}", self.vb);
-
-            // update range
-            if kminf > kmin {
-                kminf -= 1;
-                if let Some(x) = self.vf.get_mut(ktoi(kminf - 1)) {
-                    *x = 0
-                }
-            } else {
-                kminf += 1;
-            }
-            if kmaxf < kmax {
-                kmaxf += 1;
-                if let Some(x) = self.vf.get_mut(ktoi(kmaxf + 1)) {
-                    *x = 0;
-                }
-            } else {
-                kmaxf -= 1
-            }
-
-            if kminb > kmin {
-                kminb -= 1;
-                if let Some(x) = self.vb.get_mut(ktoi(kminb - 1)) {
-                    *x = !0usize;
-                }
-            } else {
-                kminb += 1;
-            }
-            if kmaxb < kmax {
-                kmaxb += 1;
-                if let Some(x) = self.vb.get_mut(ktoi(kmaxb + 1)) {
-                    *x = !0usize;
-                }
-            } else {
-                kmaxb -= 1
-            }
         }
 
         unreachable!();
@@ -180,15 +170,15 @@ fn find_mid() {
         // (vec![0], vec![1, 1], (3, (0, 2), (0, 2))),
         // (vec![0], vec![0, 1, 0], (2, (1, 2), (1, 2))),
         // (vec![0], vec![0, 0, 0], (2, (0, 1), (1, 2))),
-        // (vec![0], vec![], (1, (0, 0), (0, 0))),
-        (vec![], vec![0], (1, (0, 0), (0, 0))),
+        // (vec![0], vec![], (1, (1, 0), (1, 0))),
+        // (vec![], vec![0], (1, (0, 1), (0, 1))),
         // (vec![], vec![], (0, (0, 0), (0, 0))),
-        (vec![0, 1, 2], vec![0, 1, 1, 2], (1, (2, 3), (3, 4))),
+        // (vec![0, 1, 2], vec![0, 1, 1, 2], (1, (2, 3), (3, 4))),
         // (vec![0, 1, 1, 2], vec![0, 1, 2], (1, (3, 2), (4, 3))),
         // (vec![0, 1, 2, 3], vec![0, 1, 2], (1, (4, 3), (4, 3))),
         // (vec![0, 1, 2], vec![0, 2, 2], (2, (1, 2), (1, 2))),
         // (vec![0, 2, 2], vec![0, 1, 2], (2, (1, 2), (1, 2))),
-        // (vec![0, 1, 2], vec![0, 1, 2], (0, (0, 0), (3, 3))),
+        (vec![0, 1, 2], vec![0, 1, 2], (0, (0, 0), (3, 3))),
     ]);
     for (xv, yv, expected) in testcases {
         let n = xv.len();
