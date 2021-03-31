@@ -3,7 +3,6 @@
 #[cfg(test)]
 mod tests;
 use std::cmp::{max, min};
-use std::collections::HashMap;
 #[cfg(test)]
 extern crate quickcheck;
 #[cfg(test)]
@@ -192,52 +191,6 @@ where
     }
 }
 
-#[test]
-fn find_mid() {
-    use std::array::IntoIter;
-    let testcases = IntoIter::new([
-        (vec![0, 3], vec![1, 1, 1, 1, 0, 3], (4, (0, 2), (0, 2))),
-        (vec![0], vec![1, 1, 1], (4, (0, 2), (0, 2))),
-        (vec![0], vec![1, 1], (3, (0, 2), (0, 2))),
-        (vec![0], vec![0, 1, 0], (2, (0, 1), (0, 1))),
-        (vec![0], vec![0, 0, 0], (2, (0, 1), (0, 1))),
-        (vec![0], vec![], (1, (1, 0), (1, 0))),
-        (vec![], vec![0], (1, (0, 1), (0, 1))),
-        (vec![], vec![], (0, (0, 0), (0, 0))),
-        (vec![0, 1, 2], vec![0, 1, 1, 2], (1, (2, 3), (3, 4))),
-        (vec![0, 1, 1, 2], vec![0, 1, 2], (1, (3, 2), (4, 3))),
-        (vec![0, 1, 2, 3], vec![0, 1, 2], (1, (4, 3), (4, 3))),
-        (vec![0, 1, 2], vec![0, 2, 2], (2, (1, 2), (1, 2))),
-        (vec![0, 2, 2], vec![0, 1, 2], (2, (1, 2), (1, 2))),
-        (vec![0, 1, 2], vec![0, 1, 2], (0, (0, 0), (3, 3))),
-    ]);
-    for (xv, yv, expected) in testcases {
-        let n = xv.len();
-        let m = yv.len();
-        let mut diff = Difference::new(&xv, &yv);
-        let ret = diff.find_mid((0, n), (0, m));
-        assert_eq!(ret, expected, "\nxv: {:?}\nyv: {:?}", xv, yv);
-    }
-}
-
-#[cfg(test)]
-use self::old::get_shortest_edit_path;
-
-fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) {
-    let (mut i, mut j) = path.next().unwrap();
-    let mut a2b = vec![None; i];
-    let mut b2a = vec![None; j];
-    for (pi, pj) in path {
-        if (i - pi) + (j - pj) == 2 {
-            a2b[pi] = Some(pj);
-            b2a[pj] = Some(pi);
-        }
-        i = pi;
-        j = pj;
-    }
-    (a2b, b2a)
-}
-
 /// An alias for the result of diff type
 pub type Diff = Vec<Option<usize>>;
 
@@ -258,37 +211,7 @@ pub type Diff = Vec<Option<usize>>;
 /// assert_eq!(b2a, vec![Some(0), Some(2)]);
 /// ```
 pub fn diff<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> (Diff, Diff) {
-    diff_by(a, b, <A as PartialEq<B>>::eq)
-}
-
-/// Returns the correspondence between two sequences with a comparison function.
-///
-/// The return value is a pair of tuples. The first tuple contains the index
-/// where the item from the first sequence appears in the 2nd sequence or `None`
-/// if the item doesn't appear in the 2nd sequence. The 2nd tuple is the same
-/// but listing the corresponding indexes for the 2nd sequence in the first
-/// sequence.
-///
-/// # Examples
-///
-/// ```
-/// use seqdiff;
-/// let nan_eq = |a: &f64, b: &f64| {
-///     if a.is_nan() && b.is_nan() {
-///         true
-///     } else {
-///         a == b
-///     }
-/// };
-/// let (a2b, b2a) = seqdiff::diff_by(&[1., 2., f64::NAN], &[1., f64::NAN], nan_eq);
-/// assert_eq!(a2b, vec![Some(0), None, Some(1)]);
-/// assert_eq!(b2a, vec![Some(0), Some(2)]);
-/// ```
-pub fn diff_by<A, B, F>(a: &[A], b: &[B], is_eq: F) -> (Diff, Diff)
-where
-    F: Fn(&A, &B) -> bool,
-{
-    path_to_diff(get_shortest_edit_path(a, b, is_eq, true).1.unwrap())
+    unimplemented!()
 }
 
 /// Compute similarity of two sequences.
@@ -312,81 +235,7 @@ pub fn ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
     if l == 0 {
         return 100.;
     }
-    let ret = l - get_shortest_edit_path(a, b, <A as PartialEq<B>>::eq, false).0;
+    let mut diff = Difference::new(a, b);
+    let ret = l - diff.find_mid((0, a.len()), (0, b.len())).0;
     (ret * 100) as f64 / l as f64
-}
-
-#[cfg(test)]
-mod old {
-    use super::*;
-
-    #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord)]
-    enum Node {
-        P((usize, usize)),
-        Root,
-    }
-
-    #[allow(clippy::many_single_char_names)]
-    pub fn get_shortest_edit_path<A, B, F>(
-        a: &[A],
-        b: &[B],
-        is_eq: F,
-        get_path: bool,
-    ) -> (usize, Option<impl Iterator<Item = (usize, usize)>>)
-    where
-        F: Fn(&A, &B) -> bool,
-    {
-        let n = a.len();
-        let m = b.len();
-        let bound = n + m;
-        let get_y = |x, k| x + bound - k;
-        let mut v = vec![0; 2 * bound + 1];
-        let mut nodes_map = if get_path { Some(HashMap::new()) } else { None };
-        let mut distance = !0;
-        'outer: for d in 0..=bound {
-            for k in ((bound - d)..=bound + d).step_by(2) {
-                let (mut x, parent) = if d == 0 {
-                    (0, Node::Root)
-                } else if k == (bound - d) || k != (bound + d) && v[k - 1] < v[k + 1] {
-                    let px = v[k + 1];
-                    (px, Node::P((px, get_y(px, k + 1))))
-                } else {
-                    let px = v[k - 1];
-                    (px + 1, Node::P((px, get_y(px, k - 1))))
-                };
-                let mut y = get_y(x, k);
-                if get_path {
-                    nodes_map.as_mut().unwrap().insert(Node::P((x, y)), parent);
-                }
-                while x < n && y < m && is_eq(&a[x], &b[y]) {
-                    x += 1;
-                    y += 1;
-                }
-                v[k] = x;
-                if x >= n && y >= m {
-                    distance = d;
-                    break 'outer;
-                }
-            }
-        }
-        debug_assert_ne!(distance, !0);
-        if get_path {
-            let mut cur = Node::P((n, m));
-            let nodes_map = nodes_map.unwrap();
-            let path = std::iter::from_fn(move || match cur {
-                Node::Root => None,
-                Node::P(ncur) => {
-                    cur = if let Some(cur) = nodes_map.get(&Node::P(ncur)) {
-                        *cur
-                    } else {
-                        Node::P((ncur.0 - 1, ncur.1 - 1))
-                    };
-                    Some(ncur)
-                }
-            });
-            (distance, Some(path))
-        } else {
-            (distance, None)
-        }
-    }
 }
