@@ -15,7 +15,7 @@ struct Difference<'a, X, Y> {
     yv: &'a [Y],
 
     // working memory for forward path
-    vf: Vec<Option<usize>>, // None is smaller than any `usize`
+    vf: Vec<usize>,
     // working memory for backward path
     vb: Vec<usize>,
     offset_d: i64,
@@ -28,7 +28,7 @@ where
     fn new(xv: &'a [X], yv: &'a [Y]) -> Self {
         let dmax = xv.len() + yv.len() + 1;
         let offset_d = yv.len() as i64;
-        let vf = vec![None; dmax];
+        let vf = vec![0usize; dmax];
         let vb = vec![!0usize; dmax];
         Self {
             xv,
@@ -56,7 +56,7 @@ where
             move |k: i64| -> usize { (k + offset) as usize }
         };
 
-        self.vf[ktoi(kmidf)] = Some(xl);
+        self.vf[ktoi(kmidf)] = xl;
         self.vb[ktoi(kmidb)] = xr;
 
         let mut kminf = kmidf;
@@ -73,7 +73,7 @@ where
                     if kminf > kmin {
                         kminf -= 1;
                         if let Some(x) = self.vf.get_mut(ktoi(kminf - 1)) {
-                            *x = None
+                            *x = 0
                         }
                     } else {
                         kminf += 1;
@@ -81,7 +81,7 @@ where
                     if kmaxf < kmax {
                         kmaxf += 1;
                         if let Some(x) = self.vf.get_mut(ktoi(kmaxf + 1)) {
-                            *x = None;
+                            *x = 0;
                         }
                     } else {
                         kmaxf -= 1
@@ -95,7 +95,7 @@ where
                     } else {
                         let lo = self.vf.get(ktoi(k - 1)).cloned();
                         let hi = self.vf.get(ktoi(k + 1)).cloned();
-                        max(lo.map(|x| x.map(|x| x + 1)), hi).unwrap().unwrap()
+                        max(lo.map(|x| x + 1), hi).unwrap()
                     };
                     let y = gety(x, k);
                     let mut u = x;
@@ -104,7 +104,7 @@ where
                         u += 1;
                         v += 1;
                     }
-                    self.vf[ik] = Some(u);
+                    self.vf[ik] = u;
                     if is_odd && kminb <= k && k <= kmaxb && self.vb[ik] <= u {
                         return (2 * d as usize - 1, (x, y), (u, v));
                     }
@@ -155,7 +155,7 @@ where
                     }
                     let ik = ktoi(k);
                     self.vb[ik] = u;
-                    if !is_odd && kminf <= k && k <= kmaxf && self.vf[ik] >= Some(u) {
+                    if !is_odd && kminf <= k && k <= kmaxf && self.vf[ik] >= u {
                         return (2 * d as usize, (u, v), (x, y));
                     }
                 }
@@ -170,12 +170,11 @@ where
 #[test]
 fn find_mid() {
     use std::array::IntoIter;
-    println!("{}", std::mem::size_of::<Option<usize>>());
     let testcases = IntoIter::new([
-        // (vec![0], vec![1, 1, 1], (4, (0, 2), (0, 2))),
+        (vec![0], vec![1, 1, 1], (4, (0, 2), (0, 2))),
         // (vec![0], vec![1, 1], (3, (0, 2), (0, 2))),
         // (vec![0], vec![0, 1, 0], (2, (1, 2), (1, 2))),
-        (vec![0], vec![0, 0, 0], (2, (0, 1), (1, 2))),
+        // (vec![0], vec![0, 0, 0], (2, (0, 1), (1, 2))),
         // (vec![0], vec![], (1, (1, 0), (1, 0))),
         // (vec![], vec![0], (1, (0, 1), (0, 1))),
         // (vec![], vec![], (0, (0, 0), (0, 0))),
