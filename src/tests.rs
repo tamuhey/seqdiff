@@ -194,28 +194,3 @@ fn hm_ratio(s: &str, t: &str, expected: f64) {
         ret
     );
 }
-
-#[rstest(xv, yv, expected,
-        case(vec![0, 3], vec![1, 1, 1, 1, 0, 3], (4, (0, 2) )),
-        case(vec![0], vec![1, 1, 1], (4, (1, 1))),
-        case(vec![0], vec![1, 1], (3, (1, 1))),
-        case(vec![0], vec![0, 1, 0], (2, (0, 1))),
-        case(vec![0], vec![0, 0, 0], (2, (0, 1))),
-        case(vec![0], vec![], (1, (1, 0))),
-        case(vec![], vec![0], (1, (0, 1))),
-        case(vec![], vec![], (0, (0, 0))),
-        case(vec![0, 1, 2], vec![0, 1, 1, 2], (1, (2, 3))),
-        case(vec![0, 1, 1, 2], vec![0, 1, 2], (1, (3, 2))),
-        case(vec![0, 1, 2, 3], vec![0, 1, 2], (1, (4, 3))),
-        case(vec![0, 1, 2], vec![0, 2, 2], (2, (2, 1))),
-        case(vec![0, 2, 2], vec![0, 1, 2], (2, (2, 1))),
-        case(vec![0, 1, 2], vec![0, 1, 2], (0, (3, 3))),
-)]
-fn hm_find_mid(xv: Vec<usize>, yv: Vec<usize>, expected: (usize, (usize, usize))) {
-    let n = xv.len();
-    let m = yv.len();
-    let mut diff = Difference::new(&xv, &yv);
-    let ret = diff.find_mid((0, n), (0, m));
-
-    assert_eq!(ret, expected);
-}

@@ -126,30 +126,28 @@ where
 
         let gety = |x: isize, k: isize| x.saturating_sub(k);
 
-        for d in 0i64.. {
+        for d in 1i64.. {
+            // We don't have to check the case `d == 0` because it is handled in `fn diff_part`
+
             // forward
             {
                 // update range
-                if d > 0 {
-                    if kminf > kmin {
-                        kminf -= 1;
-                        self.vf.get_mut(ktoi(kminf - 1)).map(|x| *x = MIN);
-                    } else {
-                        kminf += 1;
-                    }
-                    if kmaxf < kmax {
-                        kmaxf += 1;
-                        self.vf.get_mut(ktoi(kmaxf + 1)).map(|x| *x = MIN);
-                    } else {
-                        kmaxf -= 1
-                    }
+                if kminf > kmin {
+                    kminf -= 1;
+                    self.vf.get_mut(ktoi(kminf - 1)).map(|x| *x = -1);
+                } else {
+                    kminf += 1;
+                }
+                if kmaxf < kmax {
+                    kmaxf += 1;
+                    self.vf.get_mut(ktoi(kmaxf + 1)).map(|x| *x = -1);
+                } else {
+                    kmaxf -= 1
                 }
 
                 for k in (kminf..=kmaxf).rev().step_by(2) {
                     let ik = ktoi(k);
-                    let x = if d == 0 {
-                        xl
-                    } else {
+                    let x = {
                         let lo = self.vf.get(ktoi(k - 1)).cloned();
                         let hi = self.vf.get(ktoi(k + 1)).cloned();
                         max(lo.map(|x| x + 1), hi).unwrap()
@@ -182,25 +180,22 @@ where
 
             // backward
             {
-                if d > 0 {
-                    // update range
-                    if kminb > kmin {
-                        kminb -= 1;
-                        self.vb.get_mut(ktoi(kminb - 1)).map(|x| *x = MAX);
-                    } else {
-                        kminb += 1;
-                    }
-                    if kmaxb < kmax {
-                        kmaxb += 1;
-                        self.vb.get_mut(ktoi(kmaxb + 1)).map(|x| *x = MAX);
-                    } else {
-                        kmaxb -= 1
-                    }
+                // update range
+                if kminb > kmin {
+                    kminb -= 1;
+                    self.vb.get_mut(ktoi(kminb - 1)).map(|x| *x = MAX);
+                } else {
+                    kminb += 1;
                 }
+                if kmaxb < kmax {
+                    kmaxb += 1;
+                    self.vb.get_mut(ktoi(kmaxb + 1)).map(|x| *x = MAX);
+                } else {
+                    kmaxb -= 1
+                }
+
                 for k in (kminb..=kmaxb).rev().step_by(2) {
-                    let x = if d == 0 {
-                        xr
-                    } else {
+                    let x = {
                         let lo = self.vb.get(ktoi(k - 1)).cloned();
                         let hi = self.vb.get(ktoi(k + 1)).cloned();
                         match (lo, hi.map(|x| x - 1)) {
@@ -286,7 +281,7 @@ pub fn ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
     if l == 0 {
         return 100.;
     }
-    let mut diff = Difference::new(a, b);
-    let ret = l - diff.find_mid((0, a.len()), (0, b.len())).0;
+    let dist = Difference::new(a, b).diff();
+    let ret = l - dist;
     (ret * 100) as f64 / l as f64
 }
