@@ -133,24 +133,24 @@ fn distance_consistency(s: Vec<char>, t: Vec<char>) {
 }
 
 #[quickcheck]
-fn quick_diff_num_with_old(s: Vec<char>, t: Vec<char>) {
+fn qc_diff_num_with_old(s: Vec<char>, t: Vec<char>) {
     let a = get_shortest_edit_path(&s, &t, char::eq, false).0;
     let mut diff = Difference::new(&s, &t);
     assert_eq!(a, diff.find_mid((0, s.len()), (0, t.len())).0)
 }
 
 #[quickcheck]
-fn quick_ratio(s: Vec<char>, t: Vec<char>) {
+fn qc_ratio(s: Vec<char>, t: Vec<char>) {
     ratio(&s, &t);
 }
 
 #[quickcheck]
-fn quick_ratio_same(s: Vec<char>) {
+fn qc_ratio_same(s: Vec<char>) {
     assert!((ratio(&s, &s) - 100f64).abs() < 1e-5);
 }
 
 #[quickcheck]
-fn quick_ratio_with_slow(s: Vec<char>, t: Vec<char>) {
+fn qc_ratio_with_slow(s: Vec<char>, t: Vec<char>) {
     let slow = slow_ratio(&s, &t);
     let fast = ratio(&s, &t);
     assert!((slow - fast).abs() < 1e-5);

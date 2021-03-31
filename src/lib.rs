@@ -72,7 +72,7 @@ where
         let mut kminb = kmidb;
         let mut kmaxb = kmidb;
 
-        let gety = |x: isize, k: isize| x - k;
+        let gety = |x: isize, k: isize| x.saturating_sub(k);
 
         for d in 0i64.. {
             // forward
