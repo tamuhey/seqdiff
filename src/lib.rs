@@ -77,14 +77,10 @@ where
 
         // process simple case
         if xl == xr {
-            for i in yl..yr {
-                self.ye[i] = None;
-            }
+            self.ye[yl..yr].iter_mut().for_each(|x| *x = None);
             yr - yl
         } else if yl == yr {
-            for i in xl..xr {
-                self.xe[i] = None;
-            }
+            self.xe[xl..xr].iter_mut().for_each(|x| *x = None);
             xr - xl
 
         // divide and conquer
