@@ -40,8 +40,9 @@ impl Iterator for EditPathFromGrid {
     }
 }
 
+// Slow diff algorithm with Matrix DP, only for testing
 #[allow(clippy::many_single_char_names)]
-fn get_shortest_edit_path_slow<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> EditPathFromGrid {
+fn get_shortest_edit_path_slow<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> (Diff, Diff) {
     let n = a.len();
     let m = b.len();
     let mut d = vec![vec![std::usize::MAX; m + 1]; n + 1];
@@ -64,28 +65,29 @@ fn get_shortest_edit_path_slow<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> EditPath
         }
     }
 
-    EditPathFromGrid {
+    let path = EditPathFromGrid {
         d,
         cur: (n, m),
         exhausted: false,
-    }
-}
-
-fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) {
-    let (mut i, mut j) = path.next().unwrap();
-    let mut a2b = vec![None; i];
-    let mut b2a = vec![None; j];
-    for (pi, pj) in path {
-        if (i - pi) + (j - pj) == 2 {
-            a2b[pi] = Some(pj);
-            b2a[pj] = Some(pi);
+    };
+    fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) {
+        let (mut i, mut j) = path.next().unwrap();
+        let mut a2b = vec![None; i];
+        let mut b2a = vec![None; j];
+        for (pi, pj) in path {
+            if (i - pi) + (j - pj) == 2 {
+                a2b[pi] = Some(pj);
+                b2a[pj] = Some(pi);
+            }
+            i = pi;
+            j = pj;
         }
-        i = pi;
-        j = pj;
+        (a2b, b2a)
     }
-    (a2b, b2a)
+    path_to_diff(path)
 }
 
+// calculate edit distance from two diffs
 fn dist_from_diffs(a: &Diff, b: &Diff) -> usize {
     let a = a.iter().filter(|x| x.is_none()).count();
     let b = b.iter().filter(|x| x.is_none()).count();
@@ -97,11 +99,12 @@ where
     T: PartialEq,
 {
     let dist = Difference::new(&a, &b).diff();
-    let (da, db) = path_to_diff(get_shortest_edit_path_slow(&a, &b));
+    let (da, db) = get_shortest_edit_path_slow(&a, &b);
     let dist_slow = dist_from_diffs(&da, &db);
     assert_eq!(dist, dist_slow);
 }
 
+/// test edit distance
 #[rstest(a,b,expected,
     case(vec![0,1], vec![1,0], 2),
     case(vec![0], vec![1,0,0], 2),
@@ -124,6 +127,7 @@ fn qc_diff_with_slow(a: Vec<u8>, b: Vec<u8>) {
     compare_with_slow(&a, &b);
 }
 
+/// check if dist and diff are consistent
 #[quickcheck]
 fn qc_distance_consistency(s: Vec<char>, t: Vec<char>) {
     let mut st = Difference::new(&s, &t);
@@ -132,6 +136,7 @@ fn qc_distance_consistency(s: Vec<char>, t: Vec<char>) {
     assert_eq!(dist, y);
 }
 
+/// check if edit script is correct
 #[quickcheck]
 fn qc_check_equality(s: Vec<usize>, t: Vec<usize>) {
     let (a, b) = diff(&s, &t);

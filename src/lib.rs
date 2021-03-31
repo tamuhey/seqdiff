@@ -134,13 +134,17 @@ where
                 // update range
                 if kminf > kmin {
                     kminf -= 1;
-                    self.vf.get_mut(ktoi(kminf - 1)).map(|x| *x = -1);
+                    if let Some(x) = self.vf.get_mut(ktoi(kminf - 1)) {
+                        *x = MIN;
+                    }
                 } else {
                     kminf += 1;
                 }
                 if kmaxf < kmax {
                     kmaxf += 1;
-                    self.vf.get_mut(ktoi(kmaxf + 1)).map(|x| *x = -1);
+                    if let Some(x) = self.vf.get_mut(ktoi(kmaxf + 1)) {
+                        *x = MIN;
+                    }
                 } else {
                     kmaxf -= 1
                 }
@@ -186,13 +190,17 @@ where
                 // update range
                 if kminb > kmin {
                     kminb -= 1;
-                    self.vb.get_mut(ktoi(kminb - 1)).map(|x| *x = MAX);
+                    if let Some(x) = self.vb.get_mut(ktoi(kminb - 1)) {
+                        *x = MAX;
+                    }
                 } else {
                     kminb += 1;
                 }
                 if kmaxb < kmax {
                     kmaxb += 1;
-                    self.vb.get_mut(ktoi(kmaxb + 1)).map(|x| *x = MAX);
+                    if let Some(x) = self.vb.get_mut(ktoi(kmaxb + 1)) {
+                        *x = MAX;
+                    }
                 } else {
                     kmaxb -= 1
                 }
