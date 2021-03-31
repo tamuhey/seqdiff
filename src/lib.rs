@@ -97,15 +97,24 @@ where
             // backward
             {
                 for k in (kminb..=kmaxb).step_by(2) {
-                    let ikhi = ktoi(k + 1);
-                    let iklo = ktoi(k - 1);
-                    let ik = ktoi(k);
                     let x = if d == 0 {
                         xr
-                    } else if k == kminb || k != kmaxb && self.vb[iklo] > self.vb[ikhi] {
-                        self.vb[ikhi] - 1
                     } else {
-                        self.vb[iklo]
+                        match (
+                            self.vb.get(ktoi(k - 1)).cloned(),
+                            self.vb.get(ktoi(k + 1)).cloned(),
+                        ) {
+                            (None, None) => unreachable!(),
+                            (Some(lo), Some(hi)) => {
+                                if hi < lo {
+                                    hi - 1
+                                } else {
+                                    lo
+                                }
+                            }
+                            (Some(x), _) => x,
+                            (_, Some(x)) => x,
+                        }
                     };
                     let y = gety(x, k);
                     let mut u = x;
@@ -114,8 +123,9 @@ where
                         u -= 1;
                         v -= 1;
                     }
+                    let ik = ktoi(k);
                     self.vb[ik] = u;
-                    if !is_odd && kminf <= k && k <= kmaxf && self.vf[ktoi(k)] >= u {
+                    if !is_odd && kminf <= k && k <= kmaxf && self.vf[ik] >= u {
                         return (2 * d as usize, (u, v), (x, y));
                     }
                 }
