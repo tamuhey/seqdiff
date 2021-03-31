@@ -117,6 +117,7 @@ fn hm_dist(a: Vec<u8>, b: Vec<u8>, expected: usize) {
 #[rstest(a,b,
     case(vec![0,1], vec![1,0]),
     case(vec![0], vec![1,0,0]),
+    case(vec![0], vec![1,0,0,1,1,1])
 )]
 fn hm_diff_with_slow(a: Vec<u8>, b: Vec<u8>) {
     compare_with_slow(&a, &b);

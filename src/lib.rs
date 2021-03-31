@@ -19,9 +19,10 @@ struct Difference<'a, X, Y> {
 
     // working memory for forward path
     vf: Vec<isize>,
+    vfm: Vec<isize>,
     // working memory for backward path
     vb: Vec<isize>,
-    offset_d: isize,
+    vbm: Vec<isize>,
 
     // edit script for xv
     xe: Vec<Option<usize>>,
@@ -34,25 +35,47 @@ where
     X: PartialEq<Y>,
 {
     fn new(xv: &'a [X], yv: &'a [Y]) -> Self {
-        let dmax = xv.len() + yv.len() + 1;
-        let offset_d = yv.len() as isize;
-        let vf = vec![MIN; dmax];
-        let vb = vec![MAX; dmax];
         let xe = vec![None; xv.len()];
         let ye = vec![None; yv.len()];
         Self {
             xv,
             yv,
-            vf,
-            vb,
-            offset_d,
             xe,
             ye,
+            vf: vec![MIN; xv.len() / 10],
+            vfm: vec![MIN; xv.len() / 10],
+            vb: vec![MIN; yv.len() / 10],
+            vbm: vec![MIN; yv.len() / 10],
         }
     }
 
     fn diff(&mut self) -> usize {
         self.diff_part((0, self.xv.len()), (0, self.yv.len()))
+    }
+
+    fn setv(&mut self, k: isize, v: isize, forward: bool) {
+        let default = if forward { MIN } else { MAX };
+        let (vec, i) = match (forward, k) {
+            (true, k) if k >= 0 => (&mut self.vf, k),
+            (true, k) => (&mut self.vfm, -k - 1),
+            (false, k) if k >= 0 => (&mut self.vb, k),
+            (false, k) => (&mut self.vbm, -k - 1),
+        };
+        let i = i as usize;
+        // extend
+        for _ in 0..(i + 1).saturating_sub(vec.len()) {
+            vec.push(default)
+        }
+        vec[i] = v;
+    }
+    fn getv(&mut self, k: isize, forward: bool) -> Option<isize> {
+        let (vec, i) = match (forward, k) {
+            (true, k) if k >= 0 => (&self.vf, k),
+            (true, k) => (&self.vfm, -k - 1),
+            (false, k) if k >= 0 => (&self.vb, k),
+            (false, k) => (&self.vbm, -k - 1),
+        };
+        vec.get(i as usize).cloned()
     }
 
     fn diff_part(
@@ -110,14 +133,8 @@ where
         let delta = (xr - xl) - (yr - yl);
         let is_odd = (delta & 1) == 1;
 
-        // convert k to index of working memory (vf, vb)
-        let ktoi = {
-            let offset = self.offset_d;
-            move |k: isize| -> usize { (k + offset) as usize }
-        };
-
-        self.vf[ktoi(kmidf)] = xl;
-        self.vb[ktoi(kmidb)] = xr;
+        self.setv(kmidf, xl, true);
+        self.setv(kmidb, xr, false);
 
         let mut kminf = kmidf;
         let mut kmaxf = kmidf;
@@ -134,26 +151,21 @@ where
                 // update range
                 if kminf > kmin {
                     kminf -= 1;
-                    if let Some(x) = self.vf.get_mut(ktoi(kminf - 1)) {
-                        *x = MIN;
-                    }
+                    self.setv(kminf - 1, MIN, true);
                 } else {
                     kminf += 1;
                 }
                 if kmaxf < kmax {
                     kmaxf += 1;
-                    if let Some(x) = self.vf.get_mut(ktoi(kmaxf + 1)) {
-                        *x = MIN;
-                    }
+                    self.setv(kmaxf + 1, MIN, true);
                 } else {
                     kmaxf -= 1
                 }
 
                 for k in (kminf..=kmaxf).rev().step_by(2) {
-                    let ik = ktoi(k);
                     let x = {
-                        let lo = self.vf.get(ktoi(k - 1)).cloned();
-                        let hi = self.vf.get(ktoi(k + 1)).cloned();
+                        let lo = self.getv(k - 1, true);
+                        let hi = self.getv(k + 1, true);
                         max(lo.map(|x| x + 1), hi).unwrap()
                     };
                     let y = gety(x, k);
@@ -178,8 +190,12 @@ where
                     debug_assert!(xl <= u && u <= xr);
                     debug_assert!(yl <= v && v <= yr);
 
-                    self.vf[ik] = u;
-                    if is_odd && kminb <= k && k <= kmaxb && self.vb[ik] <= u {
+                    self.setv(k, u, true);
+                    if is_odd
+                        && kminb <= k
+                        && k <= kmaxb
+                        && self.getv(k, false).map(|x| x <= u).unwrap_or(false)
+                    {
                         return (2 * d as usize - 1, (x as usize, y as usize));
                     }
                 }
@@ -190,25 +206,21 @@ where
                 // update range
                 if kminb > kmin {
                     kminb -= 1;
-                    if let Some(x) = self.vb.get_mut(ktoi(kminb - 1)) {
-                        *x = MAX;
-                    }
+                    self.setv(kminb - 1, MAX, false);
                 } else {
                     kminb += 1;
                 }
                 if kmaxb < kmax {
                     kmaxb += 1;
-                    if let Some(x) = self.vb.get_mut(ktoi(kmaxb + 1)) {
-                        *x = MAX;
-                    }
+                    self.setv(kmaxb + 1, MAX, false);
                 } else {
                     kmaxb -= 1
                 }
 
                 for k in (kminb..=kmaxb).rev().step_by(2) {
                     let x = {
-                        let lo = self.vb.get(ktoi(k - 1)).cloned();
-                        let hi = self.vb.get(ktoi(k + 1)).cloned();
+                        let lo = self.getv(k - 1, false);
+                        let hi = self.getv(k + 1, false);
                         match (lo, hi.map(|x| x - 1)) {
                             (Some(lo), Some(hi)) => min(lo, hi),
                             (Some(lo), _) => lo,
@@ -238,9 +250,12 @@ where
                     debug_assert!(xl <= u && u <= xr);
                     debug_assert!(yl <= v && v <= yr);
 
-                    let ik = ktoi(k);
-                    self.vb[ik] = u;
-                    if !is_odd && kminf <= k && k <= kmaxf && self.vf[ik] >= u {
+                    self.setv(k, u, false);
+                    if !is_odd
+                        && kminf <= k
+                        && k <= kmaxf
+                        && self.getv(k, true).map(|v| v >= u).unwrap_or(false)
+                    {
                         return (2 * d as usize, (x as usize, y as usize));
                     }
                 }
