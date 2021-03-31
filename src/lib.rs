@@ -139,7 +139,12 @@ where
                     } else {
                         let lo = self.vb.get(ktoi(k - 1)).cloned();
                         let hi = self.vb.get(ktoi(k + 1)).cloned();
-                        max(lo, hi.map(|x| x - 1)).unwrap()
+                        match (lo, hi.map(|x| x - 1)) {
+                            (Some(lo), Some(hi)) => min(lo, hi),
+                            (Some(lo), _) => lo,
+                            (_, Some(hi)) => hi,
+                            _ => unreachable!(),
+                        }
                     };
                     let y = gety(x, k);
                     let mut u = x;
@@ -166,7 +171,7 @@ where
 fn find_mid() {
     use std::array::IntoIter;
     let testcases = IntoIter::new([
-        // (vec![0], vec![1, 1, 1], (4, (0, 2), (0, 2))),
+        (vec![0], vec![1, 1, 1], (4, (0, 2), (0, 2))),
         // (vec![0], vec![1, 1], (3, (0, 2), (0, 2))),
         // (vec![0], vec![0, 1, 0], (2, (1, 2), (1, 2))),
         // (vec![0], vec![0, 0, 0], (2, (0, 1), (1, 2))),
@@ -177,7 +182,7 @@ fn find_mid() {
         // (vec![0, 1, 1, 2], vec![0, 1, 2], (1, (3, 2), (4, 3))),
         // (vec![0, 1, 2, 3], vec![0, 1, 2], (1, (4, 3), (4, 3))),
         // (vec![0, 1, 2], vec![0, 2, 2], (2, (1, 2), (1, 2))),
-        (vec![0, 2, 2], vec![0, 1, 2], (2, (1, 2), (1, 2))),
+        // (vec![0, 2, 2], vec![0, 1, 2], (2, (1, 2), (1, 2))),
         // (vec![0, 1, 2], vec![0, 1, 2], (0, (0, 0), (3, 3))),
     ]);
     for (xv, yv, expected) in testcases {
