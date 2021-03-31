@@ -2,6 +2,7 @@
 //! based on Myers' algorithm.
 #[cfg(test)]
 mod tests;
+use std::cmp::Ordering;
 use std::cmp::{max, min};
 use std::collections::HashMap;
 #[cfg(test)]
@@ -10,14 +11,65 @@ extern crate quickcheck;
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
+#[derive(Debug, Clone, Copy)]
+enum MaybeInf {
+    INF,
+    MINF,
+    Value(usize),
+}
+use MaybeInf::*;
+
+impl PartialEq for MaybeInf {
+    fn eq(&self, other: &Self) -> bool {
+        match (*self, *other) {
+            (MaybeInf::Value(a), MaybeInf::Value(b)) => a.eq(&b),
+            _ => false,
+        }
+    }
+}
+
+impl PartialOrd for MaybeInf {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (*self, *other) {
+            (Value(a), Value(b)) => a.partial_cmp(&b),
+            (INF, INF) | (MINF, MINF) => None,
+            (MINF, _) | (_, INF) => Some(Ordering::Less),
+            (INF, _) | (_, MINF) => Some(Ordering::Greater),
+        }
+    }
+}
+use std::ops::{Add, Sub};
+impl Add for MaybeInf {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value(a), Value(b)) => Value(a + b),
+            (INF, MINF) | (MINF, INF) => unreachable!(),
+            (INF, _) => INF,
+            (MINF, _) => MINF,
+        }
+    }
+}
+impl Sub for MaybeInf {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Value(a), Value(b)) => Value(a - b),
+            (INF, INF) | (MINF, MINF) => unreachable!(),
+            (INF, _) => INF,
+            (MINF, _) => MINF,
+        }
+    }
+}
+
 struct Difference<'a, X, Y> {
     xv: &'a [X],
     yv: &'a [Y],
 
     // working memory for forward path
-    vf: Vec<usize>,
+    vf: Vec<MaybeInf>,
     // working memory for backward path
-    vb: Vec<usize>,
+    vb: Vec<MaybeInf>,
     offset_d: i64,
 }
 
@@ -28,8 +80,8 @@ where
     fn new(xv: &'a [X], yv: &'a [Y]) -> Self {
         let dmax = xv.len() + yv.len() + 1;
         let offset_d = yv.len() as i64;
-        let vf = vec![0usize; dmax];
-        let vb = vec![!0usize; dmax];
+        let vf = vec![MINF; dmax];
+        let vb = vec![INF; dmax];
         Self {
             xv,
             yv,
@@ -56,8 +108,8 @@ where
             move |k: i64| -> usize { (k + offset) as usize }
         };
 
-        self.vf[ktoi(kmidf)] = xl;
-        self.vb[ktoi(kmidb)] = xr;
+        self.vf[ktoi(kmidf)] = Value(xl);
+        self.vb[ktoi(kmidb)] = Value(xr);
 
         let mut kminf = kmidf;
         let mut kmaxf = kmidf;
@@ -73,7 +125,7 @@ where
                     if kminf > kmin {
                         kminf -= 1;
                         if let Some(x) = self.vf.get_mut(ktoi(kminf - 1)) {
-                            *x = 0
+                            *x = MINF
                         }
                     } else {
                         kminf += 1;
@@ -81,7 +133,7 @@ where
                     if kmaxf < kmax {
                         kmaxf += 1;
                         if let Some(x) = self.vf.get_mut(ktoi(kmaxf + 1)) {
-                            *x = 0;
+                            *x = MINF;
                         }
                     } else {
                         kmaxf -= 1
@@ -91,11 +143,22 @@ where
                 for k in (kminf..=kmaxf).step_by(2) {
                     let ik = ktoi(k);
                     let x = if d == 0 {
-                        xl
+                        Value(xl)
                     } else {
                         let lo = self.vf.get(ktoi(k - 1)).cloned();
                         let hi = self.vf.get(ktoi(k + 1)).cloned();
-                        max(lo.map(|x| x + 1), hi).unwrap()
+                        match (lo, hi) {
+                            (None, None) => unreachable!(),
+                            (Some(x), None) => x,
+                            (None, Some(x)) => x,
+                            (Some(lo), Some(hi)) => {
+                                if hi + Value(1) > lo {
+                                    hi + Value(1)
+                                } else {
+                                    lo
+                                }
+                            }
+                        }
                     };
                     let y = gety(x, k);
                     let mut u = x;
