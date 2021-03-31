@@ -40,8 +40,9 @@ impl Iterator for EditPathFromGrid {
     }
 }
 
+// Slow diff algorithm with Matrix DP, only for testing
 #[allow(clippy::many_single_char_names)]
-fn get_shortest_edit_path_grid<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> EditPathFromGrid {
+fn get_shortest_edit_path_slow<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> (Diff, Diff) {
     let n = a.len();
     let m = b.len();
     let mut d = vec![vec![std::usize::MAX; m + 1]; n + 1];
@@ -64,39 +65,91 @@ fn get_shortest_edit_path_grid<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> EditPath
         }
     }
 
-    EditPathFromGrid {
+    let path = EditPathFromGrid {
         d,
         cur: (n, m),
         exhausted: false,
+    };
+    fn path_to_diff(mut path: impl Iterator<Item = (usize, usize)>) -> (Diff, Diff) {
+        let (mut i, mut j) = path.next().unwrap();
+        let mut a2b = vec![None; i];
+        let mut b2a = vec![None; j];
+        for (pi, pj) in path {
+            if (i - pi) + (j - pj) == 2 {
+                a2b[pi] = Some(pj);
+                b2a[pj] = Some(pi);
+            }
+            i = pi;
+            j = pj;
+        }
+        (a2b, b2a)
     }
+    path_to_diff(path)
+}
+
+// calculate edit distance from two diffs
+fn dist_from_diffs(a: &Diff, b: &Diff) -> usize {
+    let a = a.iter().filter(|x| x.is_none()).count();
+    let b = b.iter().filter(|x| x.is_none()).count();
+    a + b
+}
+
+fn compare_with_slow<T>(a: &[T], b: &[T])
+where
+    T: PartialEq,
+{
+    let dist = Difference::new(&a, &b).diff();
+    let (da, db) = get_shortest_edit_path_slow(&a, &b);
+    let dist_slow = dist_from_diffs(&da, &db);
+    assert_eq!(dist, dist_slow);
+}
+
+/// test edit distance
+#[rstest(a,b,expected,
+    case(vec![0,1], vec![1,0], 2),
+    case(vec![0], vec![1,0,0], 2),
+)]
+fn hm_dist(a: Vec<u8>, b: Vec<u8>, expected: usize) {
+    let y = Difference::new(&a, &b).diff();
+    assert_eq!(y, expected);
+}
+
+#[rstest(a,b,
+    case(vec![0,1], vec![1,0]),
+    case(vec![0], vec![1,0,0]),
+)]
+fn hm_diff_with_slow(a: Vec<u8>, b: Vec<u8>) {
+    compare_with_slow(&a, &b);
 }
 
 #[quickcheck]
-fn randomcheck_myers_with_dp(a: Vec<char>, b: Vec<char>) {
-    let v = path_to_diff(get_shortest_edit_path_grid(&a, &b));
-    let w = diff(&a, &b);
-    assert_eq!(v, w);
-    let (a2b, b2a) = w;
-    assert_eq!(a.len(), a2b.len());
-    assert_eq!(b.len(), b2a.len());
+fn qc_diff_with_slow(a: Vec<u8>, b: Vec<u8>) {
+    compare_with_slow(&a, &b);
 }
 
-#[test]
-fn test_diff() {
-    let cases = [
-        (
-            (vec![std::f64::NAN], vec![std::f64::NAN]),
-            (vec![None], vec![None]),
-        ),
-        (
-            (vec![1., 2., 3.], vec![1., 3.]),
-            (vec![Some(0), None, Some(1)], vec![Some(0), Some(2)]),
-        ),
-    ];
-    for ((a, b), expected) in cases.iter() {
-        let ret = diff(a, b);
-        assert_eq!(ret, *expected);
-    }
+/// check if dist and diff are consistent
+#[quickcheck]
+fn qc_distance_consistency(s: Vec<char>, t: Vec<char>) {
+    let mut st = Difference::new(&s, &t);
+    let dist = st.diff();
+    let y = dist_from_diffs(&st.xe, &st.ye);
+    assert_eq!(dist, y);
+}
+
+/// check if edit script is correct
+#[quickcheck]
+fn qc_check_equality(s: Vec<usize>, t: Vec<usize>) {
+    let (a, b) = diff(&s, &t);
+    assert_eq!(s.len(), a.len());
+    let check = |s: &[_], t: &[_], a: &[_]| {
+        for (&si, &j) in s.iter().zip(a.iter()) {
+            if let Some(j) = j {
+                assert_eq!(si, t[j]);
+            }
+        }
+    };
+    check(&s, &t, &a);
+    check(&t, &s, &b);
 }
 
 pub fn slow_ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
@@ -110,26 +163,17 @@ pub fn slow_ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
 }
 
 #[quickcheck]
-fn distance_consistency(s: Vec<char>, t: Vec<char>) {
-    let (dist, path) = get_shortest_edit_path(&s, &t, char::eq, true);
-    let (a2b, _) = path_to_diff(path.unwrap());
-    let n = a2b.iter().filter(|x| x.is_some()).count() * 2;
-    let m = s.len() + t.len() - dist;
-    assert_eq!(n, m);
-}
-
-#[quickcheck]
-fn quick_ratio(s: Vec<char>, t: Vec<char>) {
+fn qc_ratio_fuzz(s: Vec<char>, t: Vec<char>) {
     ratio(&s, &t);
 }
 
 #[quickcheck]
-fn quick_ratio_same(s: Vec<char>) {
+fn qc_ratio_same(s: Vec<char>) {
     assert!((ratio(&s, &s) - 100f64).abs() < 1e-5);
 }
 
 #[quickcheck]
-fn quick_ratio_with_slow(s: Vec<char>, t: Vec<char>) {
+fn qc_ratio_with_slow(s: Vec<char>, t: Vec<char>) {
     let slow = slow_ratio(&s, &t);
     let fast = ratio(&s, &t);
     assert!((slow - fast).abs() < 1e-5);
@@ -143,7 +187,7 @@ fn quick_ratio_with_slow(s: Vec<char>, t: Vec<char>) {
     case("abc", "abd", 66.66666667),
     case("abc", "abddddd", 40.)
 )]
-fn test_ratio(s: &str, t: &str, expected: f64) {
+fn hm_ratio(s: &str, t: &str, expected: f64) {
     let ret = ratio(
         &s.chars().collect::<Vec<_>>(),
         &t.chars().collect::<Vec<_>>(),

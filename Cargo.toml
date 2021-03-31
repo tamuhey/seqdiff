@@ -23,8 +23,11 @@ rstest = "0.6.4"
 criterion = "0.3"
 
 [[bench]]
-name = "main"
+name = "diff"
 harness = false
 
 [lib]
 bench = false
+
+[profile.bench]
+debug = 2
