@@ -196,6 +196,7 @@ where
 fn find_mid() {
     use std::array::IntoIter;
     let testcases = IntoIter::new([
+        (vec![0, 3], vec![1, 1, 1, 1, 0, 3], (4, (0, 2), (0, 2))),
         (vec![0], vec![1, 1, 1], (4, (0, 2), (0, 2))),
         (vec![0], vec![1, 1], (3, (0, 2), (0, 2))),
         (vec![0], vec![0, 1, 0], (2, (0, 1), (0, 1))),
