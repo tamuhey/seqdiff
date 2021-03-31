@@ -157,16 +157,19 @@ where
                         continue;
                     }
 
-                    let mut u = x;
-                    let mut v = y;
-
-                    let len = self.xv[u as usize..xr as usize]
-                        .iter()
-                        .zip(self.yv[v as usize..yr as usize].iter())
-                        .take_while(|(x, y)| x == y)
-                        .count() as isize;
-                    u += len;
-                    v += len;
+                    // go forward in diagonal path
+                    let (u, v) = {
+                        let mut u = x;
+                        let mut v = y;
+                        let len = self.xv[u as usize..xr as usize]
+                            .iter()
+                            .zip(self.yv[v as usize..yr as usize].iter())
+                            .take_while(|(x, y)| x == y)
+                            .count() as isize;
+                        u += len;
+                        v += len;
+                        (u, v)
+                    };
 
                     debug_assert!(xl <= u && u <= xr);
                     debug_assert!(yl <= v && v <= yr);
@@ -210,17 +213,20 @@ where
                         continue;
                     }
 
-                    let mut u = x;
-                    let mut v = y;
-                    let len = self.xv[xl as usize..u as usize]
-                        .iter()
-                        .rev()
-                        .zip(self.yv[yl as usize..v as usize].iter().rev())
-                        .take_while(|(x, y)| x == y)
-                        .count() as isize;
-                    u -= len;
-                    v -= len;
-
+                    // go backward in diagonal path
+                    let (u, v) = {
+                        let mut u = x;
+                        let mut v = y;
+                        let len = self.xv[xl as usize..u as usize]
+                            .iter()
+                            .rev()
+                            .zip(self.yv[yl as usize..v as usize].iter().rev())
+                            .take_while(|(x, y)| x == y)
+                            .count() as isize;
+                        u -= len;
+                        v -= len;
+                        (u, v)
+                    };
                     debug_assert!(xl <= u && u <= xr);
                     debug_assert!(yl <= v && v <= yr);
 
