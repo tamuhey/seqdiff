@@ -132,6 +132,21 @@ fn qc_distance_consistency(s: Vec<char>, t: Vec<char>) {
     assert_eq!(dist, y);
 }
 
+#[quickcheck]
+fn qc_check_equality(s: Vec<usize>, t: Vec<usize>) {
+    let (a, b) = diff(&s, &t);
+    assert_eq!(s.len(), a.len());
+    let check = |s: &[_], t: &[_], a: &[_]| {
+        for (&si, &j) in s.iter().zip(a.iter()) {
+            if let Some(j) = j {
+                assert_eq!(si, t[j]);
+            }
+        }
+    };
+    check(&s, &t, &a);
+    check(&t, &s, &b);
+}
+
 pub fn slow_ratio<A: PartialEq<B>, B>(a: &[A], b: &[B]) -> f64 {
     let l = a.len() + b.len();
     if l == 0 {
@@ -167,7 +182,7 @@ fn qc_ratio_with_slow(s: Vec<char>, t: Vec<char>) {
     case("abc", "abd", 66.66666667),
     case("abc", "abddddd", 40.)
 )]
-fn test_ratio(s: &str, t: &str, expected: f64) {
+fn hm_ratio(s: &str, t: &str, expected: f64) {
     let ret = ratio(
         &s.chars().collect::<Vec<_>>(),
         &t.chars().collect::<Vec<_>>(),
