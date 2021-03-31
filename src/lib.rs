@@ -9,16 +9,17 @@ extern crate quickcheck;
 #[cfg(test)]
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
+use std::isize::{MAX, MIN};
 
 struct Difference<'a, X, Y> {
     xv: &'a [X],
     yv: &'a [Y],
 
     // working memory for forward path
-    vf: Vec<usize>,
+    vf: Vec<isize>,
     // working memory for backward path
-    vb: Vec<usize>,
-    offset_d: i64,
+    vb: Vec<isize>,
+    offset_d: isize,
 }
 
 impl<'a, X, Y> Difference<'a, X, Y>
@@ -27,9 +28,9 @@ where
 {
     fn new(xv: &'a [X], yv: &'a [Y]) -> Self {
         let dmax = xv.len() + yv.len() + 1;
-        let offset_d = yv.len() as i64;
-        let vf = vec![0usize; dmax];
-        let vb = vec![!0usize; dmax];
+        let offset_d = yv.len() as isize;
+        let vf = vec![MIN; dmax];
+        let vb = vec![MAX; dmax];
         Self {
             xv,
             yv,
@@ -45,15 +46,22 @@ where
         (xl, xr): (usize, usize),
         (yl, yr): (usize, usize),
     ) -> (usize, (usize, usize), (usize, usize)) {
-        let kmin = xl as i64 - yr as i64;
-        let kmax = xr as i64 - yl as i64;
-        let kmidf = xl as i64 - yl as i64; // center diag in this fragment for forwad snake
-        let kmidb = xr as i64 - yr as i64;
-        let delta = ((xr - xl) as i64) - ((yr - yl) as i64);
+        let xl = xl as isize;
+        let xr = xr as isize;
+        let yl = yl as isize;
+        let yr = yr as isize;
+
+        let kmin = xl - yr;
+        let kmax = xr - yl;
+        let kmidf = xl - yl; // center diag in this fragment for forwad snake
+        let kmidb = xr - yr;
+        let delta = (xr - xl) - (yr - yl);
         let is_odd = (delta & 1) == 1;
+
+        // convert k to index of working memory (vf, vb)
         let ktoi = {
             let offset = self.offset_d;
-            move |k: i64| -> usize { (k + offset) as usize }
+            move |k: isize| -> usize { (k + offset) as usize }
         };
 
         self.vf[ktoi(kmidf)] = xl;
@@ -64,7 +72,8 @@ where
         let mut kminb = kmidb;
         let mut kmaxb = kmidb;
 
-        let gety = |x: usize, k: i64| (x as i64 - k) as usize;
+        let gety = |x: isize, k: isize| x - k;
+
         for d in 0i64.. {
             // forward
             {
@@ -72,17 +81,13 @@ where
                 if d > 0 {
                     if kminf > kmin {
                         kminf -= 1;
-                        if let Some(x) = self.vf.get_mut(ktoi(kminf - 1)) {
-                            *x = 0
-                        }
+                        self.vf.get_mut(ktoi(kminf - 1)).map(|x| *x = MIN);
                     } else {
                         kminf += 1;
                     }
                     if kmaxf < kmax {
                         kmaxf += 1;
-                        if let Some(x) = self.vf.get_mut(ktoi(kmaxf + 1)) {
-                            *x = 0;
-                        }
+                        self.vf.get_mut(ktoi(kmaxf + 1)).map(|x| *x = MIN);
                     } else {
                         kmaxf -= 1
                     }
@@ -98,19 +103,31 @@ where
                         max(lo.map(|x| x + 1), hi).unwrap()
                     };
                     let y = gety(x, k);
+                    if !(xl <= x && x <= xr && yl <= y && y <= yr) {
+                        continue;
+                    }
+
                     let mut u = x;
                     let mut v = y;
-                    while u < xr && v < yr && self.xv[u] == self.yv[v] {
+
+                    while u < xr && v < yr && self.xv[u as usize] == self.yv[v as usize] {
                         u += 1;
                         v += 1;
                     }
+
+                    debug_assert!(xl <= u && u <= xr);
+                    debug_assert!(yl <= v && v <= yr);
+
                     self.vf[ik] = u;
                     if is_odd && kminb <= k && k <= kmaxb && self.vb[ik] <= u {
-                        return (2 * d as usize - 1, (x, y), (u, v));
+                        return (
+                            2 * d as usize - 1,
+                            (x as usize, y as usize),
+                            (u as usize, v as usize),
+                        );
                     }
                 }
             }
-            println!("vf {:?}", self.vf);
 
             // backward
             {
@@ -118,17 +135,13 @@ where
                     // update range
                     if kminb > kmin {
                         kminb -= 1;
-                        if let Some(x) = self.vb.get_mut(ktoi(kminb - 1)) {
-                            *x = !0usize;
-                        }
+                        self.vb.get_mut(ktoi(kminb - 1)).map(|x| *x = MAX);
                     } else {
                         kminb += 1;
                     }
                     if kmaxb < kmax {
                         kmaxb += 1;
-                        if let Some(x) = self.vb.get_mut(ktoi(kmaxb + 1)) {
-                            *x = !0usize;
-                        }
+                        self.vb.get_mut(ktoi(kmaxb + 1)).map(|x| *x = MAX);
                     } else {
                         kmaxb -= 1
                     }
@@ -147,20 +160,32 @@ where
                         }
                     };
                     let y = gety(x, k);
+                    if !(xl <= x && x <= xr && yl <= y && y <= yr) {
+                        continue;
+                    }
+
                     let mut u = x;
                     let mut v = y;
-                    while xl < u && yl < v && self.xv[u - 1] == self.yv[v - 1] {
+                    while xl < u && yl < v && self.xv[(u - 1) as usize] == self.yv[(v - 1) as usize]
+                    {
                         u -= 1;
                         v -= 1;
                     }
+
+                    debug_assert!(xl <= u && u <= xr);
+                    debug_assert!(yl <= v && v <= yr);
+
                     let ik = ktoi(k);
                     self.vb[ik] = u;
                     if !is_odd && kminf <= k && k <= kmaxf && self.vf[ik] >= u {
-                        return (2 * d as usize, (u, v), (x, y));
+                        return (
+                            2 * d as usize,
+                            (u as usize, v as usize),
+                            (x as usize, y as usize),
+                        );
                     }
                 }
             }
-            println!("vb {:?}", self.vb);
         }
 
         unreachable!();
@@ -172,18 +197,18 @@ fn find_mid() {
     use std::array::IntoIter;
     let testcases = IntoIter::new([
         (vec![0], vec![1, 1, 1], (4, (0, 2), (0, 2))),
-        // (vec![0], vec![1, 1], (3, (0, 2), (0, 2))),
-        // (vec![0], vec![0, 1, 0], (2, (1, 2), (1, 2))),
-        // (vec![0], vec![0, 0, 0], (2, (0, 1), (1, 2))),
-        // (vec![0], vec![], (1, (1, 0), (1, 0))),
-        // (vec![], vec![0], (1, (0, 1), (0, 1))),
-        // (vec![], vec![], (0, (0, 0), (0, 0))),
-        // (vec![0, 1, 2], vec![0, 1, 1, 2], (1, (2, 3), (3, 4))),
-        // (vec![0, 1, 1, 2], vec![0, 1, 2], (1, (3, 2), (4, 3))),
-        // (vec![0, 1, 2, 3], vec![0, 1, 2], (1, (4, 3), (4, 3))),
-        // (vec![0, 1, 2], vec![0, 2, 2], (2, (1, 2), (1, 2))),
-        // (vec![0, 2, 2], vec![0, 1, 2], (2, (1, 2), (1, 2))),
-        // (vec![0, 1, 2], vec![0, 1, 2], (0, (0, 0), (3, 3))),
+        (vec![0], vec![1, 1], (3, (0, 2), (0, 2))),
+        (vec![0], vec![0, 1, 0], (2, (0, 1), (0, 1))),
+        (vec![0], vec![0, 0, 0], (2, (0, 1), (0, 1))),
+        (vec![0], vec![], (1, (1, 0), (1, 0))),
+        (vec![], vec![0], (1, (0, 1), (0, 1))),
+        (vec![], vec![], (0, (0, 0), (0, 0))),
+        (vec![0, 1, 2], vec![0, 1, 1, 2], (1, (2, 3), (3, 4))),
+        (vec![0, 1, 1, 2], vec![0, 1, 2], (1, (3, 2), (4, 3))),
+        (vec![0, 1, 2, 3], vec![0, 1, 2], (1, (4, 3), (4, 3))),
+        (vec![0, 1, 2], vec![0, 2, 2], (2, (1, 2), (1, 2))),
+        (vec![0, 2, 2], vec![0, 1, 2], (2, (1, 2), (1, 2))),
+        (vec![0, 1, 2], vec![0, 1, 2], (0, (0, 0), (3, 3))),
     ]);
     for (xv, yv, expected) in testcases {
         let n = xv.len();
