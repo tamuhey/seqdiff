@@ -1,9 +1,9 @@
-# SeqDiff - Diff between two sequences for Rust and Python
+# SeqDiff - diff library for Rust and Python
 [![creates.io](https://img.shields.io/crates/v/seqdiff.svg)](https://crates.io/crates/seqdiff)
 [![pypi](https://img.shields.io/pypi/v/pyseqdiff.svg)](https://pypi.org/project/pyseqdiff/)
 [![Actions Status](https://github.com/tamuhey/seqdiff/workflows/Test%20and%20Deploy/badge.svg)](https://github.com/tamuhey/seqdiff/actions)
 
-Functions to get correspondence between two sequences like `diff`, based on Myers' algorithm.
+`diff` based on Myers' algorithm.
 
 <img src="./img/py_printdiff.png" width=400>
 
